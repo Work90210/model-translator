@@ -21,7 +21,7 @@ jobs:
           cache: "pnpm"
       - run: pnpm install --frozen-lockfile
       - run: pnpm turbo run lint typecheck
-      - run: pnpm --filter @model-translator/transformer test -- --coverage
+      - run: pnpm --filter @model-translator/transformer test:coverage
       - uses: davelosert/vitest-coverage-report-action@v2
         if: always()
         with:
