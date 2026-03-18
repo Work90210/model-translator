@@ -1,6 +1,6 @@
-import type { ParseWarning } from './types.js';
-import { ResolveError } from './errors.js';
 import { MAX_DEPTH, FORBIDDEN_KEYS } from './constants.js';
+import { ResolveError } from './errors.js';
+import type { ParseWarning } from './types.js';
 
 const MAX_RESOLUTIONS = 1000;
 const MAX_ARRAY_ITEMS = 10_000;

@@ -1,3 +1,6 @@
+import { TransformError } from './errors.js';
+import { sanitizeName, generateToolName, deduplicateNames, sanitizeParamName } from './sanitize.js';
+import { flattenSchema } from './schema.js';
 import type {
   HttpMethod,
   JSONSchema,
@@ -5,14 +8,10 @@ import type {
   OpenAPIOperation,
   OpenAPIParameter,
   OpenAPIRequestBody,
-  ResolvedOpenAPISpec,
   TransformOptions,
   TransformResult,
   TransformWarning,
 } from './types.js';
-import { sanitizeName, generateToolName, deduplicateNames, sanitizeParamName } from './sanitize.js';
-import { flattenSchema } from './schema.js';
-import { TransformError } from './errors.js';
 
 const HTTP_METHODS: readonly HttpMethod[] = [
   'get', 'post', 'put', 'delete', 'patch', 'head', 'options', 'trace',
@@ -97,7 +96,7 @@ export function transformSpec(options: TransformOptions): TransformResult {
       }
 
       const rawName = resolveToolName(operation, method, path, nameStrategy, warnings);
-      const tool = operationToTool(operation, method, path, rawName, pathLevelParams, warnings);
+      const tool = operationToTool(operation, method, path, rawName, pathLevelParams);
       toolEntries.push({ name: rawName, tool });
     }
   }
@@ -174,7 +173,6 @@ function operationToTool(
   path: string,
   name: string,
   pathLevelParams: readonly OpenAPIParameter[],
-  warnings: TransformWarning[],
 ): MCPToolDefinition {
   const description = resolveDescription(operation, method, path);
   const properties = Object.create(null) as Record<string, JSONSchema>;

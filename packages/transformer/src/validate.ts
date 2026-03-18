@@ -1,5 +1,5 @@
-import type { ParseWarning, ResolvedOpenAPISpec } from './types.js';
 import { ValidationError } from './errors.js';
+import type { ParseWarning, ResolvedOpenAPISpec } from './types.js';
 
 export function validateSpec(spec: unknown): {
   readonly warnings: readonly ParseWarning[];

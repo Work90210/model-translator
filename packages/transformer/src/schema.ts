@@ -1,5 +1,5 @@
-import type { JSONSchema } from './types.js';
 import { MAX_DEPTH, FORBIDDEN_KEYS } from './constants.js';
+import type { JSONSchema } from './types.js';
 
 const MAX_COMPOSITION_ITEMS = 100;
 

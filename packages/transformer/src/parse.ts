@@ -1,6 +1,6 @@
-import type { ParseInput, ParseResult, ParseWarning, ResolvedOpenAPISpec } from './types.js';
 import { ParseError } from './errors.js';
 import { resolveRefs } from './resolve.js';
+import type { ParseInput, ParseResult, ParseWarning, ResolvedOpenAPISpec } from './types.js';
 import { validateSpec, detectVersion } from './validate.js';
 
 export function parseSpec(input: ParseInput): ParseResult {
