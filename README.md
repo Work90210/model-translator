@@ -1,6 +1,6 @@
 <br />
 <p align="center">
-    <a href="https://github.com/kylefuhri/apifold" target="_blank"><img width="260" src="https://via.placeholder.com/520x120/1a1a2e/ffffff?text=Model+Translator" alt="APIFold"></a>
+    <a href="https://apifold.dev" target="_blank"><img width="260" src="public/logo.svg" alt="APIFold"></a>
     <br />
     <br />
     <b>Turn any REST API into an MCP server. No code required.</b>
@@ -8,7 +8,7 @@
     <br />
 </p>
 
-[![CI](https://img.shields.io/github/actions/workflow/status/kylefuhri/apifold/ci.yml?label=tests&style=flat-square)](https://github.com/kylefuhri/apifold/actions)
+[![CI](https://img.shields.io/github/actions/workflow/status/Work90210/model-translator/ci.yml?label=tests&style=flat-square)](https://github.com/Work90210/model-translator/actions)
 [![License](https://img.shields.io/badge/license-AGPL--3.0-blue?style=flat-square)](./LICENSE)
 [![Transformer](https://img.shields.io/badge/transformer-MIT-green?style=flat-square)](./packages/transformer/LICENSE)
 [![Node](https://img.shields.io/badge/node-%3E%3D20-brightgreen?style=flat-square)](https://nodejs.org)
@@ -35,8 +35,8 @@ Table of Contents:
 Before running the installation command, make sure you have [Node.js 20+](https://nodejs.org), [pnpm 9+](https://pnpm.io), and [Docker](https://www.docker.com/products/docker-desktop) installed on your machine:
 
 ```bash
-git clone https://github.com/kylefuhri/apifold.git
-cd apifold
+git clone https://github.com/Work90210/model-translator.git
+cd model-translator
 pnpm install
 ```
 
