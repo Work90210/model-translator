@@ -22,6 +22,7 @@ export type {
 // Credential
 export type {
   Credential,
+  SafeCredential,
   CreateCredentialInput,
   UpdateCredentialInput,
   CredentialFilters,

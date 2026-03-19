@@ -25,6 +25,7 @@ export class SpecRepository extends BaseRepository<
       .select()
       .from(specs)
       .where(and(...conditions))
+      .orderBy(specs.createdAt)
       .limit(DEFAULT_QUERY_LIMIT);
 
     return this.freezeAll(rows);

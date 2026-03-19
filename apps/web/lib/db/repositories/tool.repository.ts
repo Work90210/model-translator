@@ -39,6 +39,7 @@ export class ToolRepository extends BaseRepository<
       .from(mcpTools)
       .innerJoin(mcpServers, eq(mcpTools.serverId, mcpServers.id))
       .where(and(...conditions))
+      .orderBy(mcpTools.createdAt)
       .limit(DEFAULT_QUERY_LIMIT);
 
     return this.freezeAll(rows);
@@ -147,10 +148,14 @@ export class ToolRepository extends BaseRepository<
       }
 
       // Re-verify ownership in DML WHERE to prevent TOCTOU
-      await tx.delete(mcpTools).where(and(
+      const deleted = await tx.delete(mcpTools).where(and(
         eq(mcpTools.id, id),
         eq(mcpTools.serverId, existing[0]!.serverId),
-      ));
+      )).returning({ id: mcpTools.id });
+
+      if (deleted.length === 0) {
+        throw new Error('Tool not found or access denied');
+      }
     });
   }
 }

@@ -12,16 +12,19 @@ export function createPlaintextKey(value: string): PlaintextKey {
   return value as PlaintextKey;
 }
 
-export interface Credential {
+export interface SafeCredential {
   readonly id: string;
   readonly serverId: string;
   readonly userId: string;
   readonly label: string;
-  readonly encryptedKey: string;
   readonly authType: CredentialAuthType;
   readonly expiresAt: Date | null;
   readonly createdAt: Date;
   readonly updatedAt: Date;
+}
+
+export interface Credential extends SafeCredential {
+  readonly encryptedKey: string;
 }
 
 export interface CreateCredentialInput {

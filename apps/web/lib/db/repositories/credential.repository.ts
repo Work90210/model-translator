@@ -1,6 +1,6 @@
 import { eq, and } from 'drizzle-orm';
 import type {
-  Credential,
+  SafeCredential,
   CreateCredentialInput,
   UpdateCredentialInput,
   CredentialFilters,
@@ -23,12 +23,12 @@ const safeColumns = {
 } as const;
 
 export class CredentialRepository extends BaseRepository<
-  Credential,
+  SafeCredential,
   CreateCredentialInput,
   UpdateCredentialInput,
   CredentialFilters
 > {
-  async findAll(userId: string, filters?: CredentialFilters): Promise<readonly Credential[]> {
+  async findAll(userId: string, filters?: CredentialFilters): Promise<readonly SafeCredential[]> {
     const conditions = [eq(credentials.userId, userId)];
 
     if (filters?.serverId) {
@@ -42,12 +42,13 @@ export class CredentialRepository extends BaseRepository<
       .select(safeColumns)
       .from(credentials)
       .where(and(...conditions))
+      .orderBy(credentials.createdAt)
       .limit(DEFAULT_QUERY_LIMIT);
 
-    return this.freezeAll(rows as Credential[]);
+    return this.freezeAll(rows);
   }
 
-  async findById(userId: string, id: string): Promise<Credential | null> {
+  async findById(userId: string, id: string): Promise<SafeCredential | null> {
     const rows = await this.db
       .select(safeColumns)
       .from(credentials)
@@ -55,7 +56,7 @@ export class CredentialRepository extends BaseRepository<
       .limit(1);
 
     const row = rows[0];
-    return row ? this.freeze(row as Credential) : null;
+    return row ? this.freeze(row) : null;
   }
 
   async getDecryptedKey(userId: string, id: string): Promise<string> {
@@ -78,7 +79,7 @@ export class CredentialRepository extends BaseRepository<
     return decryptCredential(row.encryptedKey);
   }
 
-  async create(userId: string, input: CreateCredentialInput): Promise<Credential> {
+  async create(userId: string, input: CreateCredentialInput): Promise<SafeCredential> {
     return this.db.transaction(async (tx) => {
       const serverRows = await tx
         .select({ id: mcpServers.id })
@@ -104,11 +105,11 @@ export class CredentialRepository extends BaseRepository<
         })
         .returning(safeColumns);
 
-      return this.freeze(rows[0]! as Credential);
+      return this.freeze(rows[0]!);
     });
   }
 
-  async update(userId: string, id: string, input: UpdateCredentialInput): Promise<Credential> {
+  async update(userId: string, id: string, input: UpdateCredentialInput): Promise<SafeCredential> {
     return this.db.transaction(async (tx) => {
       const updateValues: Record<string, unknown> = {};
       if (input.label !== undefined) updateValues['label'] = input.label;
@@ -132,7 +133,7 @@ export class CredentialRepository extends BaseRepository<
         throw new Error('Credential not found or access denied');
       }
 
-      return this.freeze(rows[0]! as Credential);
+      return this.freeze(rows[0]!);
     });
   }
 

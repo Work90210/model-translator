@@ -185,18 +185,19 @@ describe('deriveKey', () => {
   });
 
   it('should use cache on repeated calls with same inputs', () => {
-    const start = performance.now();
-    deriveKey(TEST_SECRET, TEST_SALT); // cold
-    const coldTime = performance.now() - start;
+    // First call derives the key (cold)
+    const key1 = deriveKey(TEST_SECRET, TEST_SALT);
 
-    const start2 = performance.now();
-    for (let i = 0; i < 100; i++) {
-      deriveKey(TEST_SECRET, TEST_SALT); // cache hit
-    }
-    const warmTime = performance.now() - start2;
+    // Mutate the returned copy — should NOT affect cache
+    key1.fill(0);
 
-    // 100 cached calls should be much faster than 1 cold call
-    expect(warmTime).toBeLessThan(coldTime);
+    // Second call should return a fresh copy from cache, not the zeroed copy
+    const key2 = deriveKey(TEST_SECRET, TEST_SALT);
+    expect(key2.every((b) => b === 0)).toBe(false);
+
+    // Verify cache returns consistent values
+    const key3 = deriveKey(TEST_SECRET, TEST_SALT);
+    expect(key2.equals(key3)).toBe(true);
   });
 
   it('should zero the key buffer on clearKeyCache', () => {

@@ -33,6 +33,7 @@ export class ServerRepository extends BaseRepository<
       .select()
       .from(mcpServers)
       .where(and(...conditions))
+      .orderBy(mcpServers.createdAt)
       .limit(DEFAULT_QUERY_LIMIT);
 
     return this.freezeAll(rows);
