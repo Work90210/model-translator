@@ -4,14 +4,14 @@ import { getDb } from '../../../lib/db/index.js';
 import { SpecRepository } from '../../../lib/db/repositories/spec.repository.js';
 import { ServerRepository } from '../../../lib/db/repositories/server.repository.js';
 import { ToolRepository } from '../../../lib/db/repositories/tool.repository.js';
-import { getUserId, withErrorHandler, withRateLimit, errorResponse, ApiError } from '../../../lib/api-helpers.js';
+import { getUserId, withErrorHandler, withRateLimit, ApiError } from '../../../lib/api-helpers.js';
 import { createSpecSchema } from '../../../lib/validation/spec.schema.js';
 import { randomBytes } from 'node:crypto';
 import { fetchSpecFromUrl } from '../../../lib/ssrf-guard.js';
 import { publishServerEvent } from '../../../lib/redis.js';
 import { ErrorCodes } from '@apifold/types';
 
-export function GET(request: NextRequest): Promise<NextResponse> {
+export function GET(_request: NextRequest): Promise<NextResponse> {
   return withErrorHandler(async () => {
     const userId = await getUserId();
     const rateLimited = await withRateLimit(userId);
