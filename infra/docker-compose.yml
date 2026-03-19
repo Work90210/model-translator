@@ -8,6 +8,7 @@ services:
       - DATABASE_URL
       - REDIS_URL
       - VAULT_SECRET
+      - VAULT_SALT
       - NODE_ENV=production
     depends_on:
       postgres:
@@ -25,6 +26,7 @@ services:
       - DATABASE_URL
       - REDIS_URL
       - VAULT_SECRET
+      - VAULT_SALT
       - NODE_ENV=production
       - RUNTIME_PORT=3001
     depends_on:
@@ -58,7 +60,7 @@ services:
     volumes:
       - redis_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      test: ["CMD-SHELL", "REDISCLI_AUTH=$$REDIS_PASSWORD redis-cli ping"]
       interval: 5s
       timeout: 5s
       retries: 5

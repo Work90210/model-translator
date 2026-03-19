@@ -14,7 +14,7 @@
     "test": {
       "dependsOn": ["^build"],
       "outputs": ["coverage/**"],
-      "env": ["DATABASE_URL", "REDIS_URL", "VAULT_SECRET"]
+      "env": ["DATABASE_URL", "REDIS_URL", "VAULT_SECRET", "VAULT_SALT"]
     },
     "dev": {
       "cache": false,
