@@ -65,6 +65,10 @@ export class SpecRepository extends BaseRepository<
     if (input.rawSpec !== undefined) updateValues['rawSpec'] = input.rawSpec;
     if (toolCount !== undefined) updateValues['toolCount'] = toolCount;
 
+    if (Object.keys(updateValues).length === 0) {
+      throw new Error('No spec fields provided for update');
+    }
+
     const rows = await this.db
       .update(specs)
       .set(updateValues)

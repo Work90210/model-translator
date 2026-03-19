@@ -25,6 +25,18 @@ import type {
 } from '../index.js';
 import type { CreateSpecInput } from '../spec.js';
 
+// Compile-time assertions — these fail at build time if invariants are violated
+type AssertReadonly<T extends { readonly id: string }> = T;
+type _AssertSpec = AssertReadonly<Spec>;
+type _AssertServer = AssertReadonly<McpServer>;
+type _AssertTool = AssertReadonly<McpTool>;
+type _AssertCredential = AssertReadonly<Credential>;
+type _AssertUsage = AssertReadonly<UsageEvent>;
+type _AssertLog = AssertReadonly<RequestLog>;
+type _AssertNoToolCount = 'toolCount' extends keyof CreateSpecInput ? never : true;
+const _ensureNoToolCount: _AssertNoToolCount = true;
+void _ensureNoToolCount;
+
 describe('ApiResponse', () => {
   describe('createSuccessResponse', () => {
     it('should create a success response with data', () => {
@@ -52,25 +64,25 @@ describe('ApiResponse', () => {
 
   describe('createErrorResponse', () => {
     it('should create an error response', () => {
-      const response = createErrorResponse('NOT_FOUND', 'Resource not found');
+      const response = createErrorResponse(ErrorCodes.NOT_FOUND, 'Resource not found');
       expect(response.success).toBe(false);
       expect(response.data).toBeNull();
-      expect(response.error).toEqual({ code: 'NOT_FOUND', message: 'Resource not found' });
+      expect(response.error).toEqual({ code: ErrorCodes.NOT_FOUND, message: 'Resource not found' });
     });
 
     it('should include details when provided', () => {
-      const response = createErrorResponse('VALIDATION_ERROR', 'Invalid input', {
+      const response = createErrorResponse(ErrorCodes.VALIDATION_ERROR, 'Invalid input', {
         fields: ['name'],
       });
       expect(response.error).toEqual({
-        code: 'VALIDATION_ERROR',
+        code: ErrorCodes.VALIDATION_ERROR,
         message: 'Invalid input',
         details: { fields: ['name'] },
       });
     });
 
     it('should not include details key when not provided', () => {
-      const response = createErrorResponse('ERROR', 'msg');
+      const response = createErrorResponse(ErrorCodes.INTERNAL_ERROR, 'msg');
       if (!response.success) {
         expect('details' in response.error).toBe(false);
       }
@@ -87,9 +99,9 @@ describe('ApiResponse', () => {
     });
 
     it('should narrow to error branch', () => {
-      const response: ApiResponse<string> = createErrorResponse('ERR', 'fail');
+      const response: ApiResponse<string> = createErrorResponse(ErrorCodes.INTERNAL_ERROR, 'fail');
       if (!response.success) {
-        expect(response.error.code).toBe('ERR');
+        expect(response.error.code).toBe(ErrorCodes.INTERNAL_ERROR);
         expect(response.data).toBeNull();
       }
     });
@@ -175,27 +187,6 @@ describe('Type safety', () => {
     expect(baseFields).toHaveLength(7);
     expect(logFields).toHaveLength(10);
     expect(usageFields).toHaveLength(8);
-  });
-
-  it('all entity interfaces should have readonly id field', () => {
-    const spec: Partial<Spec> = { id: 'test' };
-    const server: Partial<McpServer> = { id: 'test' };
-    const tool: Partial<McpTool> = { id: 'test' };
-    const credential: Partial<Credential> = { id: 'test' };
-    const usage: Partial<UsageEvent> = { id: 'test' };
-    const log: Partial<RequestLog> = { id: 'test' };
-
-    expect(spec.id).toBe('test');
-    expect(server.id).toBe('test');
-    expect(tool.id).toBe('test');
-    expect(credential.id).toBe('test');
-    expect(usage.id).toBe('test');
-    expect(log.id).toBe('test');
-  });
-
-  it('Spec should not include toolCount in CreateSpecInput', () => {
-    const keys: (keyof CreateSpecInput)[] = ['name', 'version', 'rawSpec'];
-    expect(keys).not.toContain('toolCount');
   });
 
   it('McpServer uses rateLimitPerMinute with explicit units', () => {

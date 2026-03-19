@@ -111,6 +111,10 @@ export class ToolRepository extends BaseRepository<
       if (input.inputSchema !== undefined) updateValues['inputSchema'] = input.inputSchema;
       if (input.isActive !== undefined) updateValues['isActive'] = input.isActive;
 
+      if (Object.keys(updateValues).length === 0) {
+        throw new Error('No tool fields provided for update');
+      }
+
       // Re-verify ownership in DML WHERE to prevent TOCTOU
       const rows = await tx
         .update(mcpTools)

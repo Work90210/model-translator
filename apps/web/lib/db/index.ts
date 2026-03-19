@@ -1,7 +1,10 @@
+import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 
 import * as schema from './schema/index.js';
+
+export type DrizzleClient = PostgresJsDatabase<typeof schema>;
 
 function getConnectionString(): string {
   const url = process.env['DATABASE_URL'];
@@ -24,9 +27,9 @@ function getPoolSize(): number {
   return 20;
 }
 
-let dbInstance: ReturnType<typeof drizzle> | null = null;
+let dbInstance: DrizzleClient | null = null;
 
-export function getDb(): ReturnType<typeof drizzle> {
+export function getDb(): DrizzleClient {
   if (dbInstance === null) {
     const sql = postgres(getConnectionString(), {
       max: getPoolSize(),
@@ -39,5 +42,3 @@ export function getDb(): ReturnType<typeof drizzle> {
   }
   return dbInstance;
 }
-
-export type DrizzleClient = ReturnType<typeof drizzle>;

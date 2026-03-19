@@ -100,6 +100,10 @@ export class ServerRepository extends BaseRepository<
     if (input.rateLimitPerMinute !== undefined) updateValues['rateLimitPerMinute'] = input.rateLimitPerMinute;
     if (input.isActive !== undefined) updateValues['isActive'] = input.isActive;
 
+    if (Object.keys(updateValues).length === 0) {
+      throw new Error('No server fields provided for update');
+    }
+
     const rows = await this.db
       .update(mcpServers)
       .set(updateValues)

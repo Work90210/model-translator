@@ -126,26 +126,18 @@ describe('Vault', () => {
       // Wrong version
       const raw1 = Buffer.from(ciphertext, 'base64');
       raw1[0] = 0x99;
-      try { decrypt(raw1.toString('base64'), TEST_SECRET, TEST_SALT); } catch (e: unknown) {
-        expect((e as Error).message).toBe('Decryption failed');
-      }
+      expect(() => decrypt(raw1.toString('base64'), TEST_SECRET, TEST_SALT)).toThrow('Decryption failed');
 
       // Tampered data
       const raw2 = Buffer.from(ciphertext, 'base64');
       raw2[15] = (raw2[15] ?? 0) ^ 0xff;
-      try { decrypt(raw2.toString('base64'), TEST_SECRET, TEST_SALT); } catch (e: unknown) {
-        expect((e as Error).message).toBe('Decryption failed');
-      }
+      expect(() => decrypt(raw2.toString('base64'), TEST_SECRET, TEST_SALT)).toThrow('Decryption failed');
 
       // Too short
-      try { decrypt(Buffer.from([0x01, 0x02]).toString('base64'), TEST_SECRET, TEST_SALT); } catch (e: unknown) {
-        expect((e as Error).message).toBe('Decryption failed');
-      }
+      expect(() => decrypt(Buffer.from([0x01, 0x02]).toString('base64'), TEST_SECRET, TEST_SALT)).toThrow('Decryption failed');
 
       // Wrong key
-      try { decrypt(ciphertext, 'w'.repeat(48), TEST_SALT); } catch (e: unknown) {
-        expect((e as Error).message).toBe('Decryption failed');
-      }
+      expect(() => decrypt(ciphertext, 'w'.repeat(48), TEST_SALT)).toThrow('Decryption failed');
     });
   });
 });

@@ -118,6 +118,10 @@ export class CredentialRepository extends BaseRepository<
         updateValues['encryptedKey'] = encryptCredential(input.plaintextKey);
       }
 
+      if (Object.keys(updateValues).length === 0) {
+        throw new Error('No credential fields provided for update');
+      }
+
       const rows = await tx
         .update(credentials)
         .set(updateValues)
