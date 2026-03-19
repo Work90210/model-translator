@@ -1,1 +1,1 @@
-export { _deriveKeyInternal as deriveKey, clearKeyCache } from '@model-translator/vault';
+export { _deriveKeyInternal as deriveKey, clearKeyCache } from '@apifold/vault';

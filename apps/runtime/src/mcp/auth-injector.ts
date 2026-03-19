@@ -1,4 +1,4 @@
-import type { AuthMode } from '@model-translator/types';
+import type { AuthMode } from '@apifold/types';
 
 import type { CredentialCache } from '../registry/credential-cache.js';
 

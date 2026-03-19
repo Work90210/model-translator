@@ -1,1 +1,1 @@
-export { encrypt } from '@model-translator/vault';
+export { encrypt } from '@apifold/vault';

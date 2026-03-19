@@ -6,4 +6,4 @@ export {
   AUTH_TAG_LENGTH,
   ALGORITHM,
   CIPHERTEXT_VERSION,
-} from '@model-translator/vault';
+} from '@apifold/vault';

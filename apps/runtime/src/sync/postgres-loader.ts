@@ -1,4 +1,4 @@
-import type { AuthMode } from '@model-translator/types';
+import type { AuthMode } from '@apifold/types';
 
 import type { Logger } from '../observability/logger.js';
 import type { ServerRegistry, L0ServerMeta } from '../registry/server-registry.js';

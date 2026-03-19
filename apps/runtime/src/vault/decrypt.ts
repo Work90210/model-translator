@@ -1,1 +1,1 @@
-export { decrypt } from '@model-translator/vault';
+export { decrypt } from '@apifold/vault';

@@ -1,1 +1,1 @@
-export { validateVaultSecret, validateVaultSalt } from '@model-translator/vault';
+export { validateVaultSecret, validateVaultSalt } from '@apifold/vault';

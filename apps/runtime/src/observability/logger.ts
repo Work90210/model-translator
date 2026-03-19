@@ -16,7 +16,7 @@ export function createLogger(config: Pick<RuntimeConfig, 'logLevel' | 'nodeEnv'>
       req: pino.stdSerializers.req,
       res: pino.stdSerializers.res,
     },
-    base: { service: 'mcp-runtime' },
+    base: { service: 'apifold-runtime' },
     timestamp: pino.stdTimeFunctions.isoTime,
   });
 }

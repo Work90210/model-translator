@@ -6,7 +6,7 @@ import { startMockUpstream } from './mock-upstream.js';
 
 const RUNTIME_PORT = 4567;
 const UPSTREAM_PORT = 4568;
-const DB_URL = `postgresql://kylefuhri@localhost:5432/model_translator_e2e`;
+const DB_URL = `postgresql://kylefuhri@localhost:5432/apifold_e2e`;
 const REDIS_URL = 'redis://localhost:6379';
 const VAULT_SECRET = 'e2e-test-vault-secret-that-is-at-least-32-chars';
 const VAULT_SALT = 'e2e-test-vault-salt-value-that-is-at-least-32-chars';

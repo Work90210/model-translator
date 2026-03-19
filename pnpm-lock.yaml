@@ -29,13 +29,13 @@ importers:
 
   apps/runtime:
     dependencies:
-      '@model-translator/transformer':
+      '@apifold/transformer':
         specifier: workspace:*
         version: link:../../packages/transformer
-      '@model-translator/types':
+      '@apifold/types':
         specifier: workspace:*
         version: link:../../packages/types
-      '@model-translator/vault':
+      '@apifold/vault':
         specifier: workspace:*
         version: link:../../packages/vault
       cors:
@@ -66,10 +66,10 @@ importers:
         specifier: ^3.23.0
         version: 3.25.76
     devDependencies:
-      '@model-translator/eslint-config':
+      '@apifold/eslint-config':
         specifier: workspace:*
         version: link:../../packages/eslint-config
-      '@model-translator/tsconfig':
+      '@apifold/tsconfig':
         specifier: workspace:*
         version: link:../../packages/tsconfig
       '@types/cors':
@@ -96,13 +96,13 @@ importers:
 
   apps/web:
     dependencies:
-      '@model-translator/types':
+      '@apifold/types':
         specifier: workspace:*
         version: link:../../packages/types
-      '@model-translator/ui':
+      '@apifold/ui':
         specifier: workspace:*
         version: link:../../packages/ui
-      '@model-translator/vault':
+      '@apifold/vault':
         specifier: workspace:*
         version: link:../../packages/vault
       drizzle-orm:
@@ -124,10 +124,10 @@ importers:
         specifier: ^4.3.6
         version: 4.3.6
     devDependencies:
-      '@model-translator/eslint-config':
+      '@apifold/eslint-config':
         specifier: workspace:*
         version: link:../../packages/eslint-config
-      '@model-translator/tsconfig':
+      '@apifold/tsconfig':
         specifier: workspace:*
         version: link:../../packages/tsconfig
       '@types/react':
@@ -184,10 +184,10 @@ importers:
 
   packages/transformer:
     devDependencies:
-      '@model-translator/eslint-config':
+      '@apifold/eslint-config':
         specifier: workspace:*
         version: link:../eslint-config
-      '@model-translator/tsconfig':
+      '@apifold/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig
       '@vitest/coverage-v8':
@@ -210,10 +210,10 @@ importers:
 
   packages/types:
     devDependencies:
-      '@model-translator/eslint-config':
+      '@apifold/eslint-config':
         specifier: workspace:*
         version: link:../eslint-config
-      '@model-translator/tsconfig':
+      '@apifold/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig
       eslint:
@@ -235,10 +235,10 @@ importers:
         specifier: ^18.0.0 || ^19.0.0
         version: 18.3.1(react@18.3.1)
     devDependencies:
-      '@model-translator/eslint-config':
+      '@apifold/eslint-config':
         specifier: workspace:*
         version: link:../eslint-config
-      '@model-translator/tsconfig':
+      '@apifold/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig
       eslint:
@@ -250,10 +250,10 @@ importers:
 
   packages/vault:
     devDependencies:
-      '@model-translator/eslint-config':
+      '@apifold/eslint-config':
         specifier: workspace:*
         version: link:../eslint-config
-      '@model-translator/tsconfig':
+      '@apifold/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig
       eslint:

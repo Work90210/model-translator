@@ -76,7 +76,7 @@ export class ProtocolHandler {
         tools: { listChanged: true },
       },
       serverInfo: {
-        name: 'model-translator-runtime',
+        name: 'apifold-runtime',
         version: '0.0.1',
       },
     });
