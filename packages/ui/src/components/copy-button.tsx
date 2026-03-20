@@ -1,9 +1,17 @@
 "use client";
 
+<<<<<<< Updated upstream
 import * as React from "react";
 import { Check, Copy } from "lucide-react";
 
 import { cn } from "../lib/utils";
+=======
+import { Check, Copy } from "lucide-react";
+import * as React from "react";
+
+import { cn } from "../lib/utils";
+
+>>>>>>> Stashed changes
 import { Button, type ButtonProps } from "./button";
 
 interface CopyButtonProps extends Omit<ButtonProps, "onClick"> {
@@ -20,6 +28,7 @@ function CopyButton({
   ...props
 }: CopyButtonProps) {
   const [copied, setCopied] = React.useState(false);
+<<<<<<< Updated upstream
   const timeoutRef = React.useRef<ReturnType<typeof setTimeout>>();
 
   const handleCopy = React.useCallback(async () => {
@@ -36,6 +45,16 @@ function CopyButton({
 
   React.useEffect(() => () => clearTimeout(timeoutRef.current), []);
 
+=======
+
+  const handleCopy = React.useCallback(async () => {
+    await navigator.clipboard.writeText(value);
+    setCopied(true);
+    onCopied?.();
+    setTimeout(() => setCopied(false), 2000);
+  }, [value, onCopied]);
+
+>>>>>>> Stashed changes
   return (
     <Button
       variant={variant}
