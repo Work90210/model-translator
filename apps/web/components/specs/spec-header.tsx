@@ -30,7 +30,7 @@ export function SpecHeader({ spec }: SpecHeaderProps) {
                 {new Date(spec.createdAt).toLocaleDateString()}
               </span>
             </span>
-            {spec.sourceUrl && (
+            {spec.sourceUrl && /^https?:\/\//.test(spec.sourceUrl) && (
               <a
                 href={spec.sourceUrl}
                 target="_blank"

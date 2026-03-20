@@ -5,6 +5,7 @@ const withMDX = createMDX();
 /** @type {import('next').NextConfig} */
 
 const isDev = process.env.NODE_ENV === "development";
+const clerkDomain = process.env.NEXT_PUBLIC_CLERK_DOMAIN || "*.clerk.accounts.dev";
 
 const securityHeaders = [
   { key: "X-Frame-Options", value: "DENY" },
@@ -25,11 +26,11 @@ const securityHeaders = [
           key: "Content-Security-Policy",
           value: [
             "default-src 'self'",
-            "script-src 'self' 'unsafe-inline' https://*.clerk.accounts.dev",
+            `script-src 'self' 'unsafe-inline' https://${clerkDomain}`,
             "style-src 'self' 'unsafe-inline'",
             "img-src 'self' data: blob: https://img.clerk.com",
             "font-src 'self'",
-            "connect-src 'self' https://*.clerk.accounts.dev https://api.clerk.com",
+            `connect-src 'self' https://${clerkDomain} https://api.clerk.com`,
             "media-src 'none'",
             "object-src 'none'",
             "frame-ancestors 'none'",

@@ -2,7 +2,10 @@
 
 import { useQuery } from "@tanstack/react-query";
 
-const RUNTIME_HEALTH_URL = "http://localhost:3002/health";
+const RUNTIME_BASE_URL = typeof window !== "undefined"
+  ? (process.env.NEXT_PUBLIC_RUNTIME_URL || "http://localhost:3002")
+  : "http://localhost:3002";
+const RUNTIME_HEALTH_URL = `${RUNTIME_BASE_URL}/health`;
 const POLL_INTERVAL_MS = 10_000;
 
 interface RuntimeHealthResult {

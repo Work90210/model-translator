@@ -37,7 +37,12 @@ export function SchemaForm({ schema, onSubmit, isLoading }: SchemaFormProps) {
     e.preventDefault();
     if (rawMode) {
       try {
-        onSubmit(JSON.parse(rawJson));
+        const parsed: unknown = JSON.parse(rawJson);
+        if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+          return;
+        }
+        onSubmit(parsed as Record<string, unknown>);
+        return;
       } catch {
         // Invalid JSON
       }
@@ -145,7 +150,15 @@ function SchemaField({
         <label className="text-sm font-medium">{label}</label>
         <select
           value={String(value ?? "")}
-          onChange={(e) => onChange(e.target.value)}
+          onChange={(e) => {
+            const val = e.target.value;
+            if (val === "") {
+              onChange(val);
+              return;
+            }
+            const asNumber = Number(val);
+            onChange(schema.enum?.some((v) => typeof v === "number") && !Number.isNaN(asNumber) ? asNumber : val);
+          }}
           className="flex h-10 w-full rounded-xl border border-input bg-background px-3 py-2 text-sm transition-all duration-300 ease-out-expo focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           <option value="">Select...</option>
@@ -192,7 +205,7 @@ function SchemaField({
         label={label}
         type="number"
         value={value != null ? String(value) : ""}
-        onChange={(e) => onChange(Number(e.target.value))}
+        onChange={(e) => onChange(e.target.value === "" ? undefined : Number(e.target.value))}
         helpText={schema.description}
         className="tabular-nums"
       />

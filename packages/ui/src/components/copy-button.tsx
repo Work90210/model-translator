@@ -20,13 +20,21 @@ function CopyButton({
   ...props
 }: CopyButtonProps) {
   const [copied, setCopied] = React.useState(false);
+  const timeoutRef = React.useRef<ReturnType<typeof setTimeout>>();
 
   const handleCopy = React.useCallback(async () => {
-    await navigator.clipboard.writeText(value);
-    setCopied(true);
-    onCopied?.();
-    setTimeout(() => setCopied(false), 2000);
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopied(true);
+      onCopied?.();
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Clipboard API denied
+    }
   }, [value, onCopied]);
+
+  React.useEffect(() => () => clearTimeout(timeoutRef.current), []);
 
   return (
     <Button

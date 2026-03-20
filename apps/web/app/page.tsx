@@ -467,13 +467,13 @@ export default function HomePage() {
                 managing infrastructure. Join the waitlist to get early access.
               </p>
               <div className="mt-6">
-                <Link
-                  href="#"
+                <a
+                  href="mailto:hello@apifold.com"
                   className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-[#645efb] to-[#a7a5ff] px-5 py-2.5 text-sm font-medium text-white transition-all duration-200 hover:shadow-lg hover:shadow-[#a7a5ff]/20 active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-[#638bff] focus-visible:outline-none"
                 >
                   Join the Waitlist (Coming Soon)
                   <ArrowRight className="h-3.5 w-3.5" />
-                </Link>
+                </a>
               </div>
             </div>
 
