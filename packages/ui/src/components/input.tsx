@@ -11,12 +11,8 @@ export interface InputProps
 
 const Input = React.forwardRef<HTMLInputElement, InputProps>(
   ({ className, type, label, error, helpText, id, ...props }, ref) => {
-<<<<<<< Updated upstream
-    const inputId = id ?? React.useId();
-=======
     const generatedId = React.useId();
     const inputId = id ?? generatedId;
->>>>>>> Stashed changes
 
     return (
       <div className="space-y-2">
