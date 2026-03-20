@@ -2,7 +2,9 @@
 
 import { useState, useMemo } from "react";
 import Link from "next/link";
-import { ArrowLeft, ScrollText } from "lucide-react";
+import { ScrollText } from "lucide-react";
+import { BackLink } from "@/components/shared/back-link";
+import { PageHeader } from "@/components/shared/page-header";
 import type { RequestLog } from "@apifold/types";
 import { Button, Skeleton, EmptyState } from "@apifold/ui";
 import { useLogs } from "@/lib/hooks";
@@ -42,24 +44,9 @@ export default function LogsPage({
 
   return (
     <div className="animate-in space-y-8">
-      {/* Back link */}
-      <Link
-        href={`/dashboard/servers/${id}`}
-        className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-all duration-300 ease-out-expo hover:text-foreground"
-      >
-        <ArrowLeft className="h-3.5 w-3.5" />
-        Back to Server
-      </Link>
+      <BackLink href={`/dashboard/servers/${id}`} label="Back to Server" />
 
-      {/* Header */}
-      <div>
-        <h1 className="text-fluid-3xl font-bold font-heading tracking-tight">
-          Logs
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground leading-normal max-w-prose">
-          Inspect incoming requests and responses.
-        </p>
-      </div>
+      <PageHeader title="Logs" description="Inspect incoming requests and responses." />
 
       <div className="border-t border-border/40" />
 

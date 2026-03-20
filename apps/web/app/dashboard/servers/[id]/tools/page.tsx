@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft, Wrench } from "lucide-react";
+import { Wrench } from "lucide-react";
+import { BackLink } from "@/components/shared/back-link";
 import { cn, Button, Badge, EmptyState, Skeleton } from "@apifold/ui";
 import { useTools, useUpdateTool } from "@/lib/hooks";
 
@@ -27,14 +28,7 @@ export default function ToolsPage({
 
   return (
     <div className="space-y-8 animate-in">
-      {/* Back link */}
-      <Link
-        href={`/dashboard/servers/${id}`}
-        className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors duration-200"
-      >
-        <ArrowLeft className="h-3.5 w-3.5" />
-        Back to Server
-      </Link>
+      <BackLink href={`/dashboard/servers/${id}`} label="Back to Server" />
 
       {/* Header */}
       <div className="flex items-center justify-between">

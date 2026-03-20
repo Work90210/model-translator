@@ -2,7 +2,9 @@
 
 import { useState, useCallback } from "react";
 import Link from "next/link";
-import { ArrowLeft, Terminal, ChevronDown } from "lucide-react";
+import { Terminal, ChevronDown } from "lucide-react";
+import { BackLink } from "@/components/shared/back-link";
+import { PageHeader } from "@/components/shared/page-header";
 import { cn, Skeleton, EmptyState } from "@apifold/ui";
 import { useTools, useTestTool } from "@/lib/hooks";
 import { SchemaForm } from "@/components/console/schema-form";
@@ -64,29 +66,14 @@ export default function ConsolePage({
         },
       );
     },
-    [id, selectedToolName, testTool],
+    [id, selectedToolName, testTool.mutate],
   );
 
   return (
     <div className="animate-in space-y-8">
-      {/* Back link */}
-      <Link
-        href={`/dashboard/servers/${id}`}
-        className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors duration-200 hover:text-foreground"
-      >
-        <ArrowLeft className="h-3.5 w-3.5" />
-        Back to Server
-      </Link>
+      <BackLink href={`/dashboard/servers/${id}`} label="Back to Server" />
 
-      {/* Header */}
-      <div>
-        <h1 className="text-fluid-3xl font-bold font-heading tracking-tight">
-          Console
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground leading-normal max-w-prose">
-          Test your tools with live requests.
-        </p>
-      </div>
+      <PageHeader title="Console" description="Test your tools with live requests." />
 
       <div className="border-t border-border/40" />
 

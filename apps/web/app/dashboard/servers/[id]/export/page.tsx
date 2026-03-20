@@ -2,7 +2,9 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Download } from "lucide-react";
+import { Download } from "lucide-react";
+import { BackLink } from "@/components/shared/back-link";
+import { PageHeader } from "@/components/shared/page-header";
 import { Button, CodeBlock, Skeleton } from "@apifold/ui";
 import { useExport } from "@/lib/hooks";
 import { FormatSelector } from "@/components/export/format-selector";
@@ -35,24 +37,9 @@ export default function ExportPage({
 
   return (
     <div className="animate-in space-y-8">
-      {/* Back link */}
-      <Link
-        href={`/dashboard/servers/${id}`}
-        className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors duration-200 hover:text-foreground"
-      >
-        <ArrowLeft className="h-3.5 w-3.5" />
-        Back to Server
-      </Link>
+      <BackLink href={`/dashboard/servers/${id}`} label="Back to Server" />
 
-      {/* Header */}
-      <div>
-        <h1 className="text-fluid-3xl font-bold font-heading tracking-tight">
-          Export
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground leading-normal max-w-prose">
-          Export your server configuration as JSON or YAML.
-        </p>
-      </div>
+      <PageHeader title="Export" description="Export your server configuration as JSON or YAML." />
 
       <div className="border-t border-border/40" />
 
