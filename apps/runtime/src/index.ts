@@ -6,6 +6,7 @@ import { loadConfig } from './config.js';
 import { ProtocolHandler } from './mcp/protocol-handler.js';
 import { SessionManager } from './mcp/session-manager.js';
 import { createLogger } from './observability/logger.js';
+import { metrics } from './observability/metrics.js';
 import { CredentialCache } from './registry/credential-cache.js';
 import { ServerRegistry } from './registry/server-registry.js';
 import { ToolLoader } from './registry/tool-loader.js';
@@ -206,6 +207,12 @@ export async function startWorker(): Promise<void> {
     process.on('message', (msg) => {
       if (msg === 'shutdown') {
         shutdown('cluster-shutdown').catch(() => process.exit(1));
+      }
+      if (msg && typeof msg === 'object' && (msg as Record<string, unknown>).type === 'metrics:request') {
+        process.send?.({
+          type: 'metrics:gauges',
+          gauges: { active_sse_connections: metrics.getGauge('active_sse_connections') },
+        });
       }
     });
   }

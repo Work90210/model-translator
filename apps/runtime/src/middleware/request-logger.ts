@@ -8,8 +8,12 @@ import { metrics } from '../observability/metrics.js';
 export function createRequestLogger(logger: Logger): RequestHandler {
   return (req, res, next) => {
     const start = performance.now();
+    const rawRequestId = req.headers['x-request-id'];
+    const requestIdHeader = Array.isArray(rawRequestId) ? rawRequestId[0] : rawRequestId;
     const requestId =
-      (req.headers['x-request-id'] as string | undefined) ?? randomUUID();
+      typeof requestIdHeader === 'string' && /^[A-Za-z0-9._:-]{1,128}$/.test(requestIdHeader)
+        ? requestIdHeader
+        : randomUUID();
 
     // Attach requestId and child logger for downstream use
     (req as unknown as Record<string, unknown>)['requestId'] = requestId;

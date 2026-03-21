@@ -60,7 +60,6 @@ export function createSSETransportRouter(deps: SSETransportDeps): Router {
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
     res.setHeader('X-Accel-Buffering', 'no');
-    res.flushHeaders();
 
     const session = sessionManager.create(slug, res, req.ip ?? 'unknown');
     if (!session) {
@@ -68,6 +67,8 @@ export function createSSETransportRouter(deps: SSETransportDeps): Router {
       res.status(503).json({ error: 'Too many active sessions' });
       return;
     }
+
+    res.flushHeaders();
 
     sessionManager.sendEvent(
       session,

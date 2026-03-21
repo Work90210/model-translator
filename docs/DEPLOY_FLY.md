@@ -68,9 +68,9 @@ Fly.io auto-starts and auto-stops machines based on traffic (configured in `fly.
 - `auto_stop_machines = true` — stops idle machines after timeout
 - `min_machines_running = 1` — always keep at least 1 machine running
 
-For manual autoscale boundaries:
+To set a fixed machine count:
 ```bash
-fly autoscale set min=1 max=10 --app apifold-runtime
+fly scale count 5 --app apifold-runtime
 ```
 
 ## Monitoring

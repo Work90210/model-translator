@@ -138,7 +138,39 @@ function runPrimary(): void {
   process.on('SIGTERM', () => shutdown('SIGTERM'));
   process.on('SIGINT', () => shutdown('SIGINT'));
 
-  // Health server on separate port
+  // Collect metrics from workers via IPC
+  const workerGauges = new Map<number, Record<string, number>>();
+
+  cluster.on('message', (worker, msg) => {
+    if (msg && typeof msg === 'object' && msg.type === 'metrics:gauges') {
+      workerGauges.set(worker.id, msg.gauges as Record<string, number>);
+    }
+  });
+
+  cluster.on('exit', (worker) => {
+    workerGauges.delete(worker.id);
+  });
+
+  // Poll workers for their gauges every 5s
+  setInterval(() => {
+    for (const id in cluster.workers) {
+      const worker = cluster.workers[id];
+      if (worker) {
+        worker.send({ type: 'metrics:request' });
+      }
+    }
+  }, 5_000).unref();
+
+  function getAggregatedGauge(name: string): number {
+    let total = 0;
+    for (const gauges of workerGauges.values()) {
+      total += gauges[name] ?? 0;
+    }
+    return total;
+  }
+
+  // Health server on separate port — bound to loopback only
+  const healthBindAddr = process.env['HEALTH_BIND_ADDR'] ?? '127.0.0.1';
   const healthServer = http.createServer((req, res) => {
     if (req.url === '/health' && req.method === 'GET') {
       const workerCount = Object.keys(cluster.workers ?? {}).length;
@@ -157,7 +189,7 @@ function runPrimary(): void {
       const workerCount = Object.keys(cluster.workers ?? {}).length;
       const maxConnectionsPerWorker = getEnvInt('RUNTIME_MAX_CONNECTIONS_PER_WORKER', 100);
       const connectionCapacity = workerCount * maxConnectionsPerWorker;
-      const activeConnections = metrics.getGauge('active_sse_connections');
+      const activeConnections = getAggregatedGauge('active_sse_connections');
       const cpuUtilization = os.loadavg()[0]! / os.cpus().length;
 
       let recommendation = 'steady';
@@ -189,8 +221,8 @@ function runPrimary(): void {
     res.end('Not Found');
   });
 
-  healthServer.listen(healthPort, () => {
-    log('info', `Health server listening on port ${healthPort}`);
+  healthServer.listen(healthPort, healthBindAddr, () => {
+    log('info', `Health server listening on ${healthBindAddr}:${healthPort}`);
   });
 }
 

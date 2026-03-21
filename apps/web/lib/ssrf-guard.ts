@@ -11,9 +11,8 @@ const PRIVATE_RANGES = [
   /^100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\./,
   /^0\./,
   /^::1$/,
-  /^fc00:/i,
-  /^fd[0-9a-f]{2}:/i,
-  /^fe80:/i,
+  /^f[cd][0-9a-f]{2}:/i,
+  /^fe[89ab][0-9a-f]:/i,
   /^ff[0-9a-f]{2}:/i,
   /^::$/,
 ];
@@ -106,11 +105,10 @@ function createPinnedAgent(
 }
 
 /**
- * Perform a fetch using a pinned DNS agent to prevent DNS rebinding.
- * Resolves DNS upfront, validates all IPs, then forces the connection
- * to use only the validated address — closing the TOCTOU gap.
+ * Low-level transport wrapper with DNS pinning for SSRF protection.
+ * Only enforces DNS pinning — no redirect blocking or size limits.
  */
-async function pinnedFetch(
+async function pinnedTransport(
   url: string,
   parsed: URL,
   validatedAddresses: readonly string[],
@@ -122,8 +120,6 @@ async function pinnedFetch(
   );
 
   try {
-    // Node's global fetch does not support the `agent` option,
-    // so we fall back to http(s).request wrapped in a Promise.
     return await new Promise<Response>((resolve, reject) => {
       const mod = parsed.protocol === 'https:' ? https : http;
       const reqOptions: http.RequestOptions = {
@@ -145,14 +141,91 @@ async function pinnedFetch(
       };
 
       const req = mod.request(url, reqOptions, (res) => {
-        // Block redirects — the response object has the redirect status
+        const chunks: Buffer[] = [];
+
+        res.on('data', (chunk: Buffer) => {
+          chunks.push(chunk);
+        });
+
+        res.on('end', () => {
+          const body = Buffer.concat(chunks);
+          const headers = new Headers();
+          for (const [key, val] of Object.entries(res.headers)) {
+            if (val) {
+              const values = Array.isArray(val) ? val : [val];
+              for (const v of values) headers.append(key, v);
+            }
+          }
+
+          resolve(
+            new Response(body, {
+              status: res.statusCode ?? 500,
+              statusText: res.statusMessage ?? '',
+              headers,
+            }),
+          );
+        });
+
+        res.on('error', reject);
+      });
+
+      req.on('error', reject);
+
+      if (init?.body) {
+        req.write(init.body);
+      }
+      req.end();
+    });
+  } finally {
+    agent.destroy();
+  }
+}
+
+/**
+ * Fetch with DNS pinning + spec-fetch policy (no redirects, size limit).
+ * Used only by fetchSpecFromUrl.
+ */
+async function pinnedSpecFetch(
+  url: string,
+  parsed: URL,
+  validatedAddresses: readonly string[],
+  init?: RequestInit,
+): Promise<Response> {
+  const agent = createPinnedAgent(
+    parsed.protocol as 'http:' | 'https:',
+    validatedAddresses,
+  );
+
+  try {
+    return await new Promise<Response>((resolve, reject) => {
+      const mod = parsed.protocol === 'https:' ? https : http;
+      const reqOptions: http.RequestOptions = {
+        hostname: parsed.hostname,
+        port: parsed.port || (parsed.protocol === 'https:' ? 443 : 80),
+        path: parsed.pathname + parsed.search,
+        method: (init?.method ?? 'GET').toUpperCase(),
+        headers: init?.headers
+          ? Object.fromEntries(
+              init.headers instanceof Headers
+                ? init.headers.entries()
+                : Array.isArray(init.headers)
+                  ? init.headers
+                  : Object.entries(init.headers),
+            )
+          : undefined,
+        agent,
+        signal: init?.signal ?? AbortSignal.timeout(FETCH_TIMEOUT_MS),
+      };
+
+      const req = mod.request(url, reqOptions, (res) => {
+        // Block redirects — spec fetches must not follow redirects
         if (res.statusCode && res.statusCode >= 300 && res.statusCode < 400) {
           res.destroy();
           reject(new Error(`Redirects are not allowed (HTTP ${res.statusCode})`));
           return;
         }
 
-        // Collect the response body
+        // Collect the response body with size limit
         const chunks: Buffer[] = [];
         let totalLength = 0;
 
@@ -211,7 +284,7 @@ export async function fetchSpecFromUrl(url: string): Promise<unknown> {
   const addresses = await resolveAllAddresses(parsed.hostname);
   validateAddresses(addresses);
 
-  const response = await pinnedFetch(
+  const response = await pinnedSpecFetch(
     url,
     parsed,
     addresses,
@@ -253,5 +326,5 @@ export async function safeFetch(
 
   const signal = init?.signal ?? AbortSignal.timeout(FETCH_TIMEOUT_MS);
 
-  return pinnedFetch(url, parsed, addresses, { ...init, signal });
+  return pinnedTransport(url, parsed, addresses, { ...init, signal });
 }

@@ -2,6 +2,8 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import type { Server } from 'http';
 import type { ChildProcess } from 'child_process';
 import { spawn } from 'child_process';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { startMockUpstream } from './mock-upstream.js';
 
 const RUNTIME_PORT = Number(process.env['E2E_RUNTIME_PORT'] ?? 4567);
@@ -71,7 +73,7 @@ describe('E2E: Full MCP Runtime Flow', () => {
 
     // 3. Start runtime process
     runtimeProcess = spawn('npx', ['tsx', 'src/index.ts'], {
-      cwd: new URL('../../', import.meta.url).pathname,
+      cwd: resolve(dirname(fileURLToPath(import.meta.url)), '../../'),
       env: {
         ...process.env,
         RUNTIME_PORT: String(RUNTIME_PORT),

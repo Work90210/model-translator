@@ -36,7 +36,7 @@ module.exports = {
     "no-restricted-syntax": [
       "error",
       {
-        selector: "CallExpression[callee.property.name='unsafe']",
+        selector: "CallExpression[callee.object.name='sql'][callee.property.name='unsafe']",
         message:
           "sql.unsafe() is a SQL injection footgun. All query strings MUST be compile-time constants with $1/$2 parameterization. If you must use it, add an eslint-disable comment with justification.",
       },
