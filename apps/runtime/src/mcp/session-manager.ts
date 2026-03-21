@@ -80,12 +80,14 @@ export class SessionManager {
     this.monitor.onSessionCreated(slug);
     metrics.incrementGauge('active_sse_connections');
 
-    // Clean up on client disconnect
+    // Clean up on client disconnect (guard against double-decrement if close() was called first)
     res.on('close', () => {
-      this.sessions.delete(session.id);
-      this.monitor.onSessionClosed(slug);
-      metrics.decrementGauge('active_sse_connections');
-      this.logger.debug({ sessionId: session.id, slug }, 'SSE session client disconnected');
+      if (this.sessions.has(session.id)) {
+        this.sessions.delete(session.id);
+        this.monitor.onSessionClosed(slug);
+        metrics.decrementGauge('active_sse_connections');
+        this.logger.debug({ sessionId: session.id, slug }, 'SSE session client disconnected');
+      }
     });
 
     return session;

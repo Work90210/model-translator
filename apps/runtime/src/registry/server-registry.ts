@@ -20,17 +20,17 @@ export interface ServerRegistryDeps {
 }
 
 export class ServerRegistry {
-  private readonly bySlug = new Map<string, L0ServerMeta>();
-  private readonly byId = new Map<string, L0ServerMeta>();
+  private bySlug = new Map<string, L0ServerMeta>();
+  private byId = new Map<string, L0ServerMeta>();
   private readonly logger: Logger;
 
   constructor(deps: ServerRegistryDeps) {
     this.logger = deps.logger;
   }
 
-  /** Bulk-load all servers (used on startup). Atomic swap to avoid race window. */
+  /** Bulk-load all servers (used on startup). Atomic reference swap — no window where maps are empty. */
   loadAll(servers: readonly L0ServerMeta[]): void {
-    // Build new maps first, then swap — no window where maps are empty
+    // Build new maps first, then swap references atomically
     const newBySlug = new Map<string, L0ServerMeta>();
     const newById = new Map<string, L0ServerMeta>();
     for (const server of servers) {
@@ -38,14 +38,9 @@ export class ServerRegistry {
       newById.set(server.id, server);
     }
 
-    this.bySlug.clear();
-    this.byId.clear();
-    for (const [slug, server] of newBySlug) {
-      this.bySlug.set(slug, server);
-    }
-    for (const [id, server] of newById) {
-      this.byId.set(id, server);
-    }
+    // Atomic swap: lookups always see a complete map (old or new), never an empty one
+    this.bySlug = newBySlug;
+    this.byId = newById;
 
     this.logger.info({ count: servers.length }, 'L0 registry loaded');
     metrics.incrementCounter('registry_load_total', { tier: 'L0' });

@@ -13,11 +13,12 @@ interface WorkerRestartRecord {
   timestamps: number[];
 }
 
-function getEnvInt(name: string, defaultValue: number): number {
+function getEnvInt(name: string, defaultValue: number, min = 1): number {
   const raw = process.env[name];
   if (raw === undefined) return defaultValue;
   const parsed = parseInt(raw, 10);
-  return Number.isNaN(parsed) ? defaultValue : parsed;
+  if (Number.isNaN(parsed)) return defaultValue;
+  return Math.max(parsed, min);
 }
 
 function runPrimary(): void {
@@ -28,7 +29,10 @@ function runPrimary(): void {
   const graceMs = getEnvInt('RUNTIME_SHUTDOWN_GRACE_MS', 10_000);
   const healthPort = getEnvInt('RUNTIME_HEALTH_PORT', 9090);
 
+  // Track restarts per logical worker slot (not PID, which changes on each fork)
   const restartRecords = new Map<number, WorkerRestartRecord>();
+  let nextWorkerId = 0;
+  const workerSlotMap = new Map<number, number>(); // node cluster worker id -> logical slot
   let shuttingDown = false;
 
   const log = (level: string, msg: string, data?: Record<string, unknown>) => {
@@ -47,7 +51,9 @@ function runPrimary(): void {
 
   // Fork initial workers
   for (let i = 0; i < maxWorkers; i++) {
-    cluster.fork();
+    const worker = cluster.fork();
+    const slot = nextWorkerId++;
+    workerSlotMap.set(worker.id, slot);
   }
 
   // Track live workers for metrics
@@ -63,23 +69,25 @@ function runPrimary(): void {
 
   cluster.on('exit', (worker, code, signal) => {
     const pid = worker.process.pid ?? 0;
-    log('warn', 'Worker exited', { workerPid: pid, code, signal });
+    const slot = workerSlotMap.get(worker.id) ?? -1;
+    workerSlotMap.delete(worker.id);
+    log('warn', 'Worker exited', { workerPid: pid, slot, code, signal });
     updateWorkerGauge();
 
     if (shuttingDown) return;
 
-    // Track restart rate
+    // Track restart rate per logical slot (survives PID changes across restarts)
     const now = Date.now();
-    const record = restartRecords.get(pid) ?? { timestamps: [] };
+    const record = restartRecords.get(slot) ?? { timestamps: [] };
     record.timestamps = record.timestamps.filter(
       (t) => now - t < RESTART_WINDOW_MS,
     );
     record.timestamps.push(now);
-    restartRecords.set(pid, record);
+    restartRecords.set(slot, record);
 
     if (record.timestamps.length > MAX_RESTARTS) {
       log('error', 'Worker exceeded restart limit, not restarting', {
-        workerPid: pid,
+        slot,
         restarts: record.timestamps.length,
       });
       return;
@@ -87,8 +95,9 @@ function runPrimary(): void {
 
     setTimeout(() => {
       if (!shuttingDown) {
-        log('info', 'Restarting worker', { previousPid: pid });
-        cluster.fork();
+        log('info', 'Restarting worker', { previousPid: pid, slot });
+        const newWorker = cluster.fork();
+        workerSlotMap.set(newWorker.id, slot);
       }
     }, RESTART_DELAY_MS);
   });

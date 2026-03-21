@@ -26,6 +26,19 @@ interface StreamableSession {
 
 // In-memory session tracking for Streamable HTTP
 const sessions = new Map<string, StreamableSession>();
+const SESSION_TTL_MS = 30 * 60 * 1000; // 30 minutes
+const MAX_SESSIONS = 10_000;
+
+// Periodic cleanup of expired sessions
+const SESSION_CLEANUP_INTERVAL_MS = 60_000;
+setInterval(() => {
+  const now = Date.now();
+  for (const [id, session] of sessions) {
+    if (now - session.createdAt > SESSION_TTL_MS) {
+      sessions.delete(id);
+    }
+  }
+}, SESSION_CLEANUP_INTERVAL_MS).unref();
 
 function jsonRpcSuccess(id: string | number, result: unknown) {
   return Object.freeze({ jsonrpc: '2.0' as const, id, result });
@@ -72,11 +85,21 @@ export function createStreamableHTTPRouter(deps: StreamableHTTPDeps): Router {
     let sessionId = req.headers['mcp-session-id'] as string | undefined;
     let session = sessionId ? sessions.get(sessionId) : undefined;
 
+    // Validate session belongs to this slug (prevent cross-slug access)
+    if (session && session.slug !== slug) {
+      res.status(403).json({ error: 'Session does not belong to this server' });
+      return;
+    }
+
     try {
       let response;
 
       switch (message.method) {
         case 'initialize': {
+          if (sessions.size >= MAX_SESSIONS) {
+            response = jsonRpcError(message.id, -32000, 'Too many active sessions');
+            break;
+          }
           // Create a new session
           sessionId = randomUUID();
           session = { id: sessionId, slug, createdAt: Date.now() };
