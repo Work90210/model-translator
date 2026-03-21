@@ -8,6 +8,7 @@ COPY apps/runtime/package.json ./apps/runtime/
 COPY packages/types/package.json ./packages/types/
 COPY packages/transformer/package.json ./packages/transformer/
 COPY packages/tsconfig/package.json ./packages/tsconfig/
+COPY packages/logger/package.json ./packages/logger/
 COPY packages/eslint-config/package.json ./packages/eslint-config/
 RUN pnpm install --frozen-lockfile --prod=false
 
@@ -27,8 +28,8 @@ COPY --from=builder /app/apps/runtime/dist ./dist
 COPY --from=builder /app/apps/runtime/node_modules ./node_modules
 COPY --from=builder /app/apps/runtime/package.json ./
 USER runtime
-EXPOSE 3001
+EXPOSE 3001 9090
 ENV RUNTIME_PORT=3001
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider http://localhost:3001/health || exit 1
-CMD ["node", "dist/index.js"]
+CMD ["node", "dist/cluster.js"]

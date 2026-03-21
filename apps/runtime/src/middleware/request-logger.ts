@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+
 import type { RequestHandler } from 'express';
 
 import type { Logger } from '../observability/logger.js';
@@ -6,6 +8,16 @@ import { metrics } from '../observability/metrics.js';
 export function createRequestLogger(logger: Logger): RequestHandler {
   return (req, res, next) => {
     const start = performance.now();
+    const rawRequestId = req.headers['x-request-id'];
+    const requestIdHeader = Array.isArray(rawRequestId) ? rawRequestId[0] : rawRequestId;
+    const requestId =
+      typeof requestIdHeader === 'string' && /^[A-Za-z0-9._:-]{1,128}$/.test(requestIdHeader)
+        ? requestIdHeader
+        : randomUUID();
+
+    // Attach requestId and child logger for downstream use
+    (req as unknown as Record<string, unknown>)['requestId'] = requestId;
+    (req as unknown as Record<string, unknown>)['log'] = logger.child({ requestId });
 
     res.on('finish', () => {
       const durationMs = Math.round(performance.now() - start);
@@ -13,7 +25,7 @@ export function createRequestLogger(logger: Logger): RequestHandler {
       const path = req.path;
       const status = res.statusCode;
 
-      logger.info({ method, path, status, durationMs }, 'request completed');
+      logger.info({ method, path, status, durationMs, requestId }, 'request completed');
 
       metrics.incrementCounter('http_requests_total', { method, status: String(status) });
       const routePath = (req.route?.path as string | undefined) ?? 'unknown';

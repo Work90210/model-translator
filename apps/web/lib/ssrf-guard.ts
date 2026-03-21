@@ -1,4 +1,6 @@
 import { promises as dns } from 'node:dns';
+import http from 'node:http';
+import https from 'node:https';
 
 const PRIVATE_RANGES = [
   /^127\./,
@@ -9,9 +11,8 @@ const PRIVATE_RANGES = [
   /^100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\./,
   /^0\./,
   /^::1$/,
-  /^fc00:/i,
-  /^fd[0-9a-f]{2}:/i,
-  /^fe80:/i,
+  /^f[cd][0-9a-f]{2}:/i,
+  /^fe[89ab][0-9a-f]:/i,
   /^ff[0-9a-f]{2}:/i,
   /^::$/,
 ];
@@ -73,8 +74,209 @@ function validateUrl(url: string): URL {
 }
 
 /**
+ * Create an HTTP(S) agent with a pinned DNS lookup.
+ * The lookup callback only returns pre-validated addresses, closing the
+ * TOCTOU window between DNS resolution and TCP connection.
+ */
+function createPinnedAgent(
+  protocol: 'http:' | 'https:',
+  validatedAddresses: readonly string[],
+): http.Agent | https.Agent {
+  // Pick the first validated IPv4 address (preferred) or first available
+  const ipv4 = validatedAddresses.find((a) => !a.includes(':'));
+  const pinnedAddr = ipv4 ?? validatedAddresses[0]!;
+  const family = pinnedAddr.includes(':') ? 6 : 4;
+
+  const lookup = (
+    _hostname: string,
+    options: unknown,
+    cb: (err: Error | null, address: string, family: number) => void,
+  ): void => {
+    if (typeof options === 'function') {
+      // lookup(hostname, cb) overload
+      (options as (err: Error | null, address: string, family: number) => void)(null, pinnedAddr, family);
+    } else {
+      cb(null, pinnedAddr, family);
+    }
+  };
+
+  const AgentClass = protocol === 'https:' ? https.Agent : http.Agent;
+  return new AgentClass({ lookup, maxSockets: 1 });
+}
+
+/**
+ * Low-level transport wrapper with DNS pinning for SSRF protection.
+ * Only enforces DNS pinning — no redirect blocking or size limits.
+ */
+async function pinnedTransport(
+  url: string,
+  parsed: URL,
+  validatedAddresses: readonly string[],
+  init?: RequestInit,
+): Promise<Response> {
+  const agent = createPinnedAgent(
+    parsed.protocol as 'http:' | 'https:',
+    validatedAddresses,
+  );
+
+  try {
+    return await new Promise<Response>((resolve, reject) => {
+      const mod = parsed.protocol === 'https:' ? https : http;
+      const reqOptions: http.RequestOptions = {
+        hostname: parsed.hostname,
+        port: parsed.port || (parsed.protocol === 'https:' ? 443 : 80),
+        path: parsed.pathname + parsed.search,
+        method: (init?.method ?? 'GET').toUpperCase(),
+        headers: init?.headers
+          ? Object.fromEntries(
+              init.headers instanceof Headers
+                ? init.headers.entries()
+                : Array.isArray(init.headers)
+                  ? init.headers
+                  : Object.entries(init.headers),
+            )
+          : undefined,
+        agent,
+        signal: init?.signal ?? AbortSignal.timeout(FETCH_TIMEOUT_MS),
+      };
+
+      const req = mod.request(url, reqOptions, (res) => {
+        const chunks: Buffer[] = [];
+
+        res.on('data', (chunk: Buffer) => {
+          chunks.push(chunk);
+        });
+
+        res.on('end', () => {
+          const body = Buffer.concat(chunks);
+          const headers = new Headers();
+          for (const [key, val] of Object.entries(res.headers)) {
+            if (val) {
+              const values = Array.isArray(val) ? val : [val];
+              for (const v of values) headers.append(key, v);
+            }
+          }
+
+          resolve(
+            new Response(body, {
+              status: res.statusCode ?? 500,
+              statusText: res.statusMessage ?? '',
+              headers,
+            }),
+          );
+        });
+
+        res.on('error', reject);
+      });
+
+      req.on('error', reject);
+
+      if (init?.body) {
+        req.write(init.body);
+      }
+      req.end();
+    });
+  } finally {
+    agent.destroy();
+  }
+}
+
+/**
+ * Fetch with DNS pinning + spec-fetch policy (no redirects, size limit).
+ * Used only by fetchSpecFromUrl.
+ */
+async function pinnedSpecFetch(
+  url: string,
+  parsed: URL,
+  validatedAddresses: readonly string[],
+  init?: RequestInit,
+): Promise<Response> {
+  const agent = createPinnedAgent(
+    parsed.protocol as 'http:' | 'https:',
+    validatedAddresses,
+  );
+
+  try {
+    return await new Promise<Response>((resolve, reject) => {
+      const mod = parsed.protocol === 'https:' ? https : http;
+      const reqOptions: http.RequestOptions = {
+        hostname: parsed.hostname,
+        port: parsed.port || (parsed.protocol === 'https:' ? 443 : 80),
+        path: parsed.pathname + parsed.search,
+        method: (init?.method ?? 'GET').toUpperCase(),
+        headers: init?.headers
+          ? Object.fromEntries(
+              init.headers instanceof Headers
+                ? init.headers.entries()
+                : Array.isArray(init.headers)
+                  ? init.headers
+                  : Object.entries(init.headers),
+            )
+          : undefined,
+        agent,
+        signal: init?.signal ?? AbortSignal.timeout(FETCH_TIMEOUT_MS),
+      };
+
+      const req = mod.request(url, reqOptions, (res) => {
+        // Block redirects — spec fetches must not follow redirects
+        if (res.statusCode && res.statusCode >= 300 && res.statusCode < 400) {
+          res.destroy();
+          reject(new Error(`Redirects are not allowed (HTTP ${res.statusCode})`));
+          return;
+        }
+
+        // Collect the response body with size limit
+        const chunks: Buffer[] = [];
+        let totalLength = 0;
+
+        res.on('data', (chunk: Buffer) => {
+          totalLength += chunk.length;
+          if (totalLength > MAX_SPEC_SIZE) {
+            res.destroy();
+            reject(new Error('Response body exceeds size limit'));
+            return;
+          }
+          chunks.push(chunk);
+        });
+
+        res.on('end', () => {
+          const body = Buffer.concat(chunks);
+          const headers = new Headers();
+          for (const [key, val] of Object.entries(res.headers)) {
+            if (val) {
+              const values = Array.isArray(val) ? val : [val];
+              for (const v of values) headers.append(key, v);
+            }
+          }
+
+          resolve(
+            new Response(body, {
+              status: res.statusCode ?? 500,
+              statusText: res.statusMessage ?? '',
+              headers,
+            }),
+          );
+        });
+
+        res.on('error', reject);
+      });
+
+      req.on('error', reject);
+
+      if (init?.body) {
+        req.write(init.body);
+      }
+      req.end();
+    });
+  } finally {
+    agent.destroy();
+  }
+}
+
+/**
  * Fetch a spec from a URL with SSRF protection.
- * Resolves DNS, validates IPs. Uses original hostname for HTTPS cert validity.
+ * Resolves DNS, validates all IPs, then connects via pinned agent
+ * to prevent DNS rebinding attacks.
  */
 export async function fetchSpecFromUrl(url: string): Promise<unknown> {
   const parsed = validateUrl(url);
@@ -82,13 +284,15 @@ export async function fetchSpecFromUrl(url: string): Promise<unknown> {
   const addresses = await resolveAllAddresses(parsed.hostname);
   validateAddresses(addresses);
 
-  // For HTTPS, keep the original hostname so TLS cert validation works.
-  // DNS rebinding is mitigated by blocking redirects and validating all resolved IPs.
-  const response = await fetch(url, {
-    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
-    headers: { Accept: 'application/json' },
-    redirect: 'error',
-  });
+  const response = await pinnedSpecFetch(
+    url,
+    parsed,
+    addresses,
+    {
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+      headers: new Headers({ Accept: 'application/json' }),
+    },
+  );
 
   if (!response.ok) {
     throw new Error(`Failed to fetch spec: HTTP ${response.status}`);
@@ -108,7 +312,8 @@ export async function fetchSpecFromUrl(url: string): Promise<unknown> {
 
 /**
  * Safe fetch with SSRF protection + timeout.
- * Validates URL, resolves DNS, checks for private IPs.
+ * Validates URL, resolves DNS, checks for private IPs,
+ * then uses pinned DNS to prevent rebinding.
  */
 export async function safeFetch(
   url: string,
@@ -119,12 +324,7 @@ export async function safeFetch(
   const addresses = await resolveAllAddresses(parsed.hostname);
   validateAddresses(addresses);
 
-  // Use original URL for HTTPS cert validity. Redirects blocked.
   const signal = init?.signal ?? AbortSignal.timeout(FETCH_TIMEOUT_MS);
 
-  return fetch(url, {
-    ...init,
-    signal,
-    redirect: 'error',
-  });
+  return pinnedTransport(url, parsed, addresses, { ...init, signal });
 }

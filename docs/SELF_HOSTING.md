@@ -47,9 +47,46 @@ The Docker Compose stack runs 5 services:
 All services include health checks:
 
 - **Web:** `GET /api/health`
-- **Runtime:** `GET /health`, `GET /health/live`, `GET /health/ready`
+- **Runtime:** `GET /health` (port 9090), `GET /health/live`, `GET /health/ready`
 - **Postgres:** `pg_isready`
 - **Redis:** `redis-cli ping`
+
+## Managed Services
+
+For deploying with external managed databases (Neon, Supabase, AWS RDS, Upstash, ElastiCache), use `docker-compose.managed.yml`:
+
+```bash
+cd infra
+docker compose -f docker-compose.managed.yml up -d
+```
+
+See the managed providers section below for connection string examples.
+
+### Managed Postgres Providers
+
+| Provider | Pool Max | Notes |
+|----------|----------|-------|
+| **Neon** | 5-10 | Uses connection pooling by default |
+| **Supabase** | 10 | Use pooler connection string (port 6543) |
+| **AWS RDS** | 20 | Supports higher connection limits |
+
+### Managed Redis Providers
+
+| Provider | TLS | Notes |
+|----------|-----|-------|
+| **Upstash** | Auto (`rediss://`) | Global multi-region read replicas |
+| **ElastiCache** | `REDIS_TLS=true` | VPC-only access |
+| **Redis Cloud** | `REDIS_TLS=true` | Managed clustering |
+
+## Monitoring
+
+Enable the optional Prometheus monitoring stack:
+
+```bash
+docker compose --profile monitoring up -d
+```
+
+Access Prometheus at `http://localhost:9091`. Available metrics include `active_sse_connections`, `active_workers`, `http_requests_total`, `http_request_duration_ms`, `total_tool_calls`, `tool_call_errors`, and `tool_call_duration_ms`.
 
 ## Backup & Restore
 

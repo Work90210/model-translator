@@ -62,7 +62,7 @@ describe('createPerServerRateLimiter', () => {
     expect((res as { status: ReturnType<typeof vi.fn> }).status).toHaveBeenCalledWith(429);
   });
 
-  it('passes through when no slug', async () => {
+  it('rejects when no slug with 400', async () => {
     const limiter = createPerServerRateLimiter({
       redis: redis as never,
       logger: createTestLogger(),
@@ -73,11 +73,12 @@ describe('createPerServerRateLimiter', () => {
     const { req, res, next } = createMockReqRes(undefined);
     await limiter(req, res, next);
 
-    expect(next).toHaveBeenCalled();
+    expect(next).not.toHaveBeenCalled();
+    expect((res as { status: ReturnType<typeof vi.fn> }).status).toHaveBeenCalledWith(400);
     expect(redis.eval).not.toHaveBeenCalled();
   });
 
-  it('passes through for invalid slug format', async () => {
+  it('rejects invalid slug format with 400', async () => {
     const limiter = createPerServerRateLimiter({
       redis: redis as never,
       logger: createTestLogger(),
@@ -88,7 +89,8 @@ describe('createPerServerRateLimiter', () => {
     const { req, res, next } = createMockReqRes('INVALID_SLUG!');
     await limiter(req, res, next);
 
-    expect(next).toHaveBeenCalled();
+    expect(next).not.toHaveBeenCalled();
+    expect((res as { status: ReturnType<typeof vi.fn> }).status).toHaveBeenCalledWith(400);
     expect(redis.eval).not.toHaveBeenCalled();
   });
 
