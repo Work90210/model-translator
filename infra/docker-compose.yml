@@ -1,28 +1,46 @@
 services:
   web:
     image: ghcr.io/${GITHUB_OWNER:-apifold}/apifold-web:latest
-    # Do not expose web port directly — all traffic routes through nginx
+    read_only: true
+    tmpfs:
+      - /tmp
     expose:
       - "3000"
+    env_file: .env
     environment:
       - DATABASE_URL
       - REDIS_URL
       - VAULT_SECRET
       - VAULT_SALT
       - NODE_ENV=production
+    networks:
+      - frontend
+      - backend
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:3000/api/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
 
   runtime:
     image: ghcr.io/${GITHUB_OWNER:-apifold}/apifold-runtime:latest
-    # Do not expose runtime port directly — all traffic routes through nginx
+    read_only: true
+    tmpfs:
+      - /tmp
     expose:
       - "3001"
       - "9090"
+    env_file: .env
     environment:
       - DATABASE_URL
       - REDIS_URL
@@ -34,19 +52,26 @@ services:
       - RUNTIME_MAX_WORKERS=${RUNTIME_MAX_WORKERS:-4}
       - RUNTIME_SHUTDOWN_GRACE_MS=${RUNTIME_SHUTDOWN_GRACE_MS:-10000}
       - RUNTIME_HEALTH_PORT=9090
+    networks:
+      - frontend
+      - backend
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
-    restart: unless-stopped
-    stop_grace_period: 15s
     healthcheck:
       test: ["CMD-SHELL", "wget --spider --quiet http://localhost:9090/health || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 3
       start_period: 15s
+    stop_grace_period: 15s
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
 
   postgres:
     image: postgres:16-alpine
@@ -57,30 +82,38 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - backend
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U mt -d apifold"]
       interval: 5s
       timeout: 5s
       retries: 5
-    # Do not expose postgres port to the host in production
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
 
   redis:
     image: redis:7-alpine
-    # Pass password via environment variable; entrypoint script writes config at startup
-    # to avoid exposing the password in command-line args (visible in docker inspect / ps)
     command: ["sh", "-c", "echo \"requirepass $REDIS_PASSWORD\" > /tmp/redis.conf && exec redis-server /tmp/redis.conf"]
     environment:
       REDIS_PASSWORD: ${REDIS_PASSWORD}
     volumes:
       - redis_data:/data
+    networks:
+      - backend
     healthcheck:
-      test: ["CMD-SHELL", "REDISCLI_AUTH=$$REDIS_PASSWORD redis-cli ping"]
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "--no-auth-warning", "ping"]
       interval: 5s
       timeout: 5s
       retries: 5
-    # Do not expose redis port to the host in production
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 256M
 
   nginx:
     image: nginx:alpine
@@ -90,9 +123,14 @@ services:
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./nginx/certs:/etc/nginx/certs:ro
+      - certbot_data:/etc/letsencrypt
+    networks:
+      - frontend
     depends_on:
-      - web
-      - runtime
+      web:
+        condition: service_healthy
+      runtime:
+        condition: service_healthy
     restart: unless-stopped
 
   prometheus:
@@ -104,6 +142,11 @@ services:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
     restart: unless-stopped
 
+networks:
+  frontend:
+  backend:
+
 volumes:
   postgres_data:
   redis_data:
+  certbot_data:
