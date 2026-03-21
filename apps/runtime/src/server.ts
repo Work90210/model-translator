@@ -14,7 +14,7 @@ import { createRequestLogger } from './middleware/request-logger.js';
 import { createServiceAuth } from './middleware/service-auth.js';
 import { createHealthRouter } from './observability/health.js';
 import type { Logger } from './observability/logger.js';
-import { registerMetricsEndpoint } from './registry/cache-metrics.js';
+import { metrics } from './observability/metrics.js';
 import type { ServerRegistry } from './registry/server-registry.js';
 import type { ToolLoader } from './registry/tool-loader.js';
 import { createSSETransportRouter } from './transports/sse.js';
@@ -47,10 +47,9 @@ export function createApp(deps: AppDeps): Express {
   app.use(createHealthRouter({ isReady: deps.isReady, logger }));
 
   // Metrics — behind service auth to prevent information disclosure
-  const metricsRouter = express.Router();
-  metricsRouter.use(createServiceAuth(config.runtimeSecret));
-  registerMetricsEndpoint(metricsRouter);
-  app.use(metricsRouter);
+  app.get('/metrics', createServiceAuth(config.runtimeSecret), (_req, res) => {
+    res.type('text/plain; version=0.0.4').send(metrics.toPrometheus());
+  });
 
   // Optional API key auth for MCP endpoints (no-op when MCP_API_KEY is not set)
   app.use('/mcp/:slug', createMcpAuth(config.mcpApiKey));
@@ -87,15 +86,11 @@ export function createApp(deps: AppDeps): Express {
   }
 
   // Internal sync endpoint — protected by service auth
-  const internalRouter = express.Router();
-  internalRouter.use(createServiceAuth(config.runtimeSecret));
-
-  internalRouter.post('/internal/sync', (_req, res) => {
+  const serviceAuth = createServiceAuth(config.runtimeSecret);
+  app.post('/internal/sync', serviceAuth, (_req, res) => {
     logger.info('Internal sync received');
     res.json({ ok: true });
   });
-
-  app.use(internalRouter);
 
   // Error handler (must be last)
   app.use(createErrorHandler(logger));
