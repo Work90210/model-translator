@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import type { Request, Response, Router } from 'express';
 import express from 'express';
 
-import type { ProtocolHandler, JsonRpcRequest } from '../mcp/protocol-handler.js';
+import type { JsonRpcRequest } from '../mcp/protocol-handler.js';
 import type { Logger } from '../observability/logger.js';
 import type { ServerRegistry } from '../registry/server-registry.js';
 import type { ToolLoader, ToolDefinition } from '../registry/tool-loader.js';
