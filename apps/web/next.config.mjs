@@ -6,6 +6,7 @@ const withMDX = createMDX();
 
 const isDev = process.env.NODE_ENV === "development";
 const clerkDomain = process.env.NEXT_PUBLIC_CLERK_DOMAIN || "*.clerk.accounts.dev";
+const cdnUrl = process.env.CDN_URL || "";
 
 const securityHeaders = [
   { key: "X-Frame-Options", value: "DENY" },
@@ -26,9 +27,9 @@ const securityHeaders = [
           key: "Content-Security-Policy",
           value: [
             "default-src 'self'",
-            `script-src 'self' 'unsafe-inline' https://${clerkDomain} https://plausible.io`,
+            `script-src 'self' 'unsafe-inline' https://${clerkDomain} https://plausible.io${cdnUrl ? ` ${cdnUrl}` : ""}`,
             "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-            "img-src 'self' data: blob: https://img.clerk.com",
+            `img-src 'self' data: blob: https://img.clerk.com${cdnUrl ? ` ${cdnUrl}` : ""}`,
             "font-src 'self' https://fonts.gstatic.com",
             `connect-src 'self' https://${clerkDomain} https://api.clerk.com https://plausible.io`,
             "media-src 'none'",
@@ -44,6 +45,7 @@ const securityHeaders = [
 
 const nextConfig = {
   output: "standalone",
+  assetPrefix: process.env.CDN_URL || undefined,
   transpilePackages: ["@apifold/ui", "@apifold/types"],
   poweredByHeader: false,
   images: {

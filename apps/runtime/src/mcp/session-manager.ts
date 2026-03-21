@@ -3,11 +3,13 @@ import { randomUUID } from 'node:crypto';
 import type { Response } from 'express';
 
 import type { Logger } from '../observability/logger.js';
+import { metrics } from '../observability/metrics.js';
 import type { ConnectionMonitor } from '../resilience/connection-monitor.js';
 
 export interface SSESession {
   readonly id: string;
   readonly slug: string;
+  readonly clientIp: string;
   readonly createdAt: number;
   lastActivityAt: number;
   readonly res: Response;
@@ -60,7 +62,7 @@ export class SessionManager {
     return this.sessions.size < this.maxSessions;
   }
 
-  create(slug: string, res: Response): SSESession | null {
+  create(slug: string, res: Response, clientIp: string): SSESession | null {
     if (!this.hasCapacity()) {
       this.logger.warn({ slug, maxSessions: this.maxSessions }, 'Max sessions reached');
       return null;
@@ -70,6 +72,7 @@ export class SessionManager {
     const session: SSESession = {
       id: randomUUID(),
       slug,
+      clientIp,
       createdAt: now,
       lastActivityAt: now,
       res,
@@ -77,12 +80,16 @@ export class SessionManager {
 
     this.sessions.set(session.id, session);
     this.monitor.onSessionCreated(slug);
+    metrics.incrementGauge('active_sse_connections');
 
-    // Clean up on client disconnect
+    // Clean up on client disconnect (guard against double-decrement if close() was called first)
     res.on('close', () => {
-      this.sessions.delete(session.id);
-      this.monitor.onSessionClosed(slug);
-      this.logger.debug({ sessionId: session.id, slug }, 'SSE session client disconnected');
+      if (this.sessions.has(session.id)) {
+        this.sessions.delete(session.id);
+        this.monitor.onSessionClosed(slug);
+        metrics.decrementGauge('active_sse_connections');
+        this.logger.debug({ sessionId: session.id, slug }, 'SSE session client disconnected');
+      }
     });
 
     return session;
@@ -96,6 +103,7 @@ export class SessionManager {
     session.res.end();
     this.sessions.delete(sessionId);
     this.monitor.onSessionClosed(session.slug);
+    metrics.decrementGauge('active_sse_connections');
     this.logger.debug({ sessionId, slug: session.slug, reason }, 'SSE session closed');
   }
 

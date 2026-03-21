@@ -2,15 +2,17 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import type { Server } from 'http';
 import type { ChildProcess } from 'child_process';
 import { spawn } from 'child_process';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { startMockUpstream } from './mock-upstream.js';
 
-const RUNTIME_PORT = 4567;
-const UPSTREAM_PORT = 4568;
-const DB_URL = `postgresql://kylefuhri@localhost:5432/apifold_e2e`;
-const REDIS_URL = 'redis://localhost:6379';
-const VAULT_SECRET = 'e2e-test-vault-secret-that-is-at-least-32-chars';
-const VAULT_SALT = 'e2e-test-vault-salt-value-that-is-at-least-32-chars';
-const RUNTIME_SECRET = 'e2e-test-runtime-secret-at-least-32-characters!!';
+const RUNTIME_PORT = Number(process.env['E2E_RUNTIME_PORT'] ?? 4567);
+const UPSTREAM_PORT = Number(process.env['E2E_UPSTREAM_PORT'] ?? 4568);
+const DB_URL = process.env['E2E_DATABASE_URL'] ?? `postgresql://localhost:5432/apifold_e2e`;
+const REDIS_URL = process.env['E2E_REDIS_URL'] ?? 'redis://localhost:6379';
+const VAULT_SECRET = process.env['E2E_VAULT_SECRET'] ?? 'e2e-test-vault-secret-that-is-at-least-32-chars';
+const VAULT_SALT = process.env['E2E_VAULT_SALT'] ?? 'e2e-test-vault-salt-value-that-is-at-least-32-chars';
+const RUNTIME_SECRET = process.env['E2E_RUNTIME_SECRET'] ?? 'e2e-test-runtime-secret-at-least-32-characters!!';
 
 let runtimeProcess: ChildProcess;
 let upstreamServer: Server;
@@ -71,7 +73,7 @@ describe('E2E: Full MCP Runtime Flow', () => {
 
     // 3. Start runtime process
     runtimeProcess = spawn('npx', ['tsx', 'src/index.ts'], {
-      cwd: '/Users/kylefuhri/development/Personal/MCP/apps/runtime',
+      cwd: resolve(dirname(fileURLToPath(import.meta.url)), '../../'),
       env: {
         ...process.env,
         RUNTIME_PORT: String(RUNTIME_PORT),
