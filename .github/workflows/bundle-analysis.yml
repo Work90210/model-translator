@@ -1,0 +1,54 @@
+name: Bundle Analysis
+on:
+  pull_request:
+    paths:
+      - "apps/web/**"
+      - "packages/**"
+      - "pnpm-lock.yaml"
+  push:
+    branches: [master]
+    paths:
+      - "apps/web/**"
+      - "packages/**"
+      - "pnpm-lock.yaml"
+permissions:
+  contents: read
+  pull-requests: write
+concurrency:
+  group: bundle-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: ".nvmrc"
+          cache: "pnpm"
+      - run: pnpm install --frozen-lockfile
+      - name: Build with bundle analysis
+        run: pnpm turbo run build --filter=@apifold/web
+        env:
+          ANALYZE: "true"
+          # CI-only dummy values for build (not real keys)
+          # gitleaks:allow
+          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_test_Y2ktbGlnaHRob3VzZS0wMC5jbGVyay5hY2NvdW50cy5kZXYk
+          CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY_CI || 'ci_placeholder_not_a_real_key' }}
+          DATABASE_URL: postgresql://ci@localhost:5432/ci
+          REDIS_URL: redis://localhost:6379
+          VAULT_SECRET: ci_placeholder_vault_secret_minimum_32_characters_long
+          VAULT_SALT: ci_placeholder_vault_salt_00000000000000000000000000000000
+      - name: Upload bundle analysis
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bundle-analysis
+          path: apps/web/.next/analyze/
+          retention-days: 30
+      - uses: hashicorp/nextjs-bundle-analysis@v0.7.2
+        if: github.event_name == 'pull_request'
+        with:
+          working-directory: apps/web
+          build-directory: .next

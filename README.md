@@ -1,4 +1,4 @@
-<br />
+
 <p align="center">
     <a href="https://apifold.dev" target="_blank"><img width="260" src="public/logo.svg" alt="APIFold"></a>
     <br />
@@ -13,104 +13,77 @@
 [![Transformer](https://img.shields.io/badge/transformer-MIT-green?style=flat-square)](./packages/transformer/LICENSE)
 [![Node](https://img.shields.io/badge/node-%3E%3D20-brightgreen?style=flat-square)](https://nodejs.org)
 [![pnpm](https://img.shields.io/badge/pnpm-%3E%3D9-orange?style=flat-square)](https://pnpm.io)
+[![Docker Pulls](https://img.shields.io/docker/pulls/apifold/apifold?style=flat-square)](https://hub.docker.com/r/apifold/apifold)
 
-APIFold reads an OpenAPI 3.x or Swagger 2.x specification and generates a live, production-ready [MCP](https://modelcontextprotocol.io) server endpoint. AI agents — Claude, Cursor, Copilot, or any MCP-compatible client — can connect immediately. Tool calls execute real HTTP requests to real upstream APIs with securely stored credentials. No stubs, no mocks, no glue code.
+## What is this?
 
-<!-- ![APIFold Dashboard](public/images/dashboard.png) -->
+APIFold is an open-source platform that turns any OpenAPI 3.x or Swagger 2.x specification into a live, production-ready [MCP](https://modelcontextprotocol.io) server. MCP (Model Context Protocol) is the emerging standard that lets AI agents -- Claude, Cursor, Copilot, Windsurf, and others -- discover and call external tools. APIFold bridges the gap: point it at your existing REST API spec, and AI agents can start using your API immediately. No stubs, no mocks, no glue code.
 
-Table of Contents:
+The platform handles the hard parts for you: credential encryption, upstream proxying, rate limiting, circuit breakers, usage metering, and per-tool access control. Import a spec, configure auth, and connect your AI client in minutes. Self-host on your own infrastructure with Docker Compose, or use the managed cloud platform with built-in billing and usage tracking.
 
-- [Installation](#installation)
-- [Self-Hosting](#self-hosting)
-- [Getting Started](#getting-started)
-  - [Using the Transformer Library](#using-the-transformer-library)
-  - [Connecting an AI Agent](#connecting-an-ai-agent)
-- [Architecture](#architecture)
-- [Contributing](#contributing)
-- [Security](#security)
-- [License](#license)
+## Quick Start
 
-## Installation
+### Hosted (Cloud)
 
-Before running the installation command, make sure you have [Node.js 20+](https://nodejs.org), [pnpm 9+](https://pnpm.io), and [Docker](https://www.docker.com/products/docker-desktop) installed on your machine:
+1. **Sign up** at [apifold.dev](https://apifold.dev)
+2. **Import** your OpenAPI spec (URL or file upload)
+3. **Connect** your AI client using the generated config snippet
+
+### Self-Host (Docker Compose)
 
 ```bash
 git clone https://github.com/Work90210/APIFold.git
 cd APIFold
-pnpm install
-```
-
-## Self-Hosting
-
-APIFold is designed to run in a containerized environment. Running your own instance is as easy as running one command from your terminal:
-
-### Development
-
-```bash
 cp .env.example .env
-docker compose -f infra/docker-compose.dev.yml up -d
-pnpm dev
+# Edit .env with your secrets — see https://apifold.dev/docs/self-hosting#configuration
+docker compose -f infra/docker-compose.yml up -d
 ```
 
 Open [http://localhost:3000](http://localhost:3000) to access the dashboard.
 
-### Production
+For advanced configuration, see the [Self-Hosting Guide](https://apifold.dev/docs/self-hosting).
 
-```bash
-cp .env.example .env
-# Edit .env with your production values (database, Redis, vault secret)
-docker compose -f infra/docker-compose.yml up -d
-```
+## How It Works
 
-The production stack includes Nginx reverse proxy, Next.js web app, Express MCP runtime, Postgres 16, and Redis 7 — all behind a single command. For advanced configuration, check out the [environment variables](.env.example) and [self-hosting guide](docs/SELF_HOSTING.md).
+APIFold follows a three-stage pipeline:
 
-## Getting Started
+1. **Import** -- You provide an OpenAPI spec (URL or file). The transformer parses every path and method into MCP tool definitions with typed input schemas.
+2. **Serve** -- An Express-based MCP runtime hosts your tools over SSE (Server-Sent Events). When an AI agent calls a tool, the runtime decrypts your stored credentials, injects authentication headers, and proxies the request to your upstream API.
+3. **Manage** -- A Next.js dashboard gives you full control: enable or disable individual tools, set rate limits, view request logs, test tools interactively, and export your server as standalone code.
 
-### Using the Transformer Library
+All components communicate through PostgreSQL (persistent state) and Redis (sessions, rate counters, pub/sub config updates). The architecture supports horizontal scaling via cluster mode and Redis-coordinated session management.
 
-The core conversion logic is published as a standalone MIT-licensed npm package. You can use it in your own tools without any AGPL obligations:
+## Documentation
+
+Full documentation is available at [apifold.dev/docs](https://apifold.dev/docs), covering:
+
+- [Getting Started](https://apifold.dev/docs/getting-started)
+- [Importing Specs](https://apifold.dev/docs/import-spec)
+- [Server Configuration](https://apifold.dev/docs/configure-server)
+- [Connecting AI Clients](https://apifold.dev/docs/connect-claude)
+- [API Reference](https://apifold.dev/docs/api-reference)
+- [Self-Hosting](https://apifold.dev/docs/self-hosting)
+
+## Packages
+
+| Package | Path | License | Description |
+|---------|------|---------|-------------|
+| `@apifold/transformer` | [`packages/transformer`](packages/transformer) | MIT | Core conversion library. Pure functions that turn OpenAPI specs into MCP tool definitions. Use it in your own tools with no AGPL obligations. |
+| Full Platform | [`apps/`](apps), [`packages/`](packages) | AGPL-3.0 | Dashboard, runtime, database layer, billing, and infrastructure. |
+
+### Using the Transformer Standalone
 
 ```bash
 npm install @apifold/transformer
 ```
 
 ```typescript
-import { transform } from "@apifold/transformer";
+import { parseSpec, transformSpec } from "@apifold/transformer";
 
-const tools = transform(myOpenAPISpec);
-// Returns MCP-compatible tool definitions
+const parsed = parseSpec({ spec: myOpenApiSpec });
+const result = transformSpec({ spec: parsed.spec });
+// result.tools contains MCP-compatible tool definitions
 ```
-
-### Connecting an AI Agent
-
-Once you've imported a spec and created an MCP server through the dashboard:
-
-**Claude Desktop** — add to your `claude_desktop_config.json`:
-```json
-{
-  "mcpServers": {
-    "my-api": {
-      "url": "http://localhost:3001/mcp/my-api/sse"
-    }
-  }
-}
-```
-
-**Cursor** — add the same endpoint URL in Cursor Settings > MCP Servers.
-
-### Available Commands
-
-| Command | Description |
-|---------|-------------|
-| `pnpm dev` | Start all services with hot-reload |
-| `pnpm build` | Build all packages |
-| `pnpm test` | Run tests |
-| `pnpm lint` | Lint all packages |
-| `pnpm typecheck` | Type-check all packages |
-| `pnpm format` | Format all files with Prettier |
-| `pnpm db:migrate` | Run database migrations |
-| `pnpm db:seed` | Seed development data |
-| `pnpm db:studio` | Open Drizzle Studio |
 
 ## Architecture
 
@@ -129,8 +102,6 @@ graph LR
     Agent["AI Agent\nClaude, Cursor,\nCopilot, etc."] -- "MCP / SSE" --> Runtime
 ```
 
-APIFold uses a monorepo architecture built with [Turborepo](https://turbo.build) and [pnpm workspaces](https://pnpm.io/workspaces):
-
 | Component | Path | Description |
 |-----------|------|-------------|
 | **Transformer** | [`packages/transformer`](packages/transformer) | Core conversion library. Spec in, MCP tools out. Pure functions, no side effects. **MIT licensed.** |
@@ -139,13 +110,34 @@ APIFold uses a monorepo architecture built with [Turborepo](https://turbo.build)
 | **Types** | [`packages/types`](packages/types) | Shared TypeScript type definitions. |
 | **UI** | [`packages/ui`](packages/ui) | Design system and component library. |
 
-You can learn more about the architecture in the [Architecture Decision Records](docs/ARCHITECTURE.md).
+For detailed architecture decisions, see the [Architecture Decision Records](docs/ARCHITECTURE.md).
+
+## Development
+
+```bash
+pnpm install
+cp .env.example .env
+docker compose -f infra/docker-compose.dev.yml up -d
+pnpm dev
+```
+
+| Command | Description |
+|---------|-------------|
+| `pnpm dev` | Start all services with hot-reload |
+| `pnpm build` | Build all packages |
+| `pnpm test` | Run tests |
+| `pnpm lint` | Lint all packages |
+| `pnpm typecheck` | Type-check all packages |
+| `pnpm format` | Format all files with Prettier |
+| `pnpm db:migrate` | Run database migrations |
+| `pnpm db:seed` | Seed development data |
+| `pnpm db:studio` | Open Drizzle Studio |
 
 ## Contributing
 
 All code contributions, including those of people having commit access, must go through a pull request and be approved before being merged. This is to ensure a proper review of all the code.
 
-We truly :heart: pull requests! If you wish to help, you can learn more about how you can contribute to this project in the [contribution guide](docs/CONTRIBUTING.md).
+See the [contribution guide](docs/CONTRIBUTING.md) for development setup and guidelines.
 
 ## Security
 
