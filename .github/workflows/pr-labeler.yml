@@ -1,0 +1,43 @@
+name: PR Labeler
+
+on:
+  pull_request:
+    types: [opened, edited]
+
+permissions:
+  pull-requests: write
+
+jobs:
+  label:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Label PR from conventional commit title
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = context.payload.pull_request.title;
+            const labelMap = {
+              'feat': 'feat',
+              'fix': 'fix',
+              'docs': 'docs',
+              'perf': 'perf',
+              'refactor': 'refactor',
+              'ci': 'ci',
+              'chore': 'chore',
+              'security': 'security',
+              'test': 'chore',
+            };
+
+            const match = title.match(/^(\w+)(?:\(.+\))?:/);
+            if (match) {
+              const prefix = match[1].toLowerCase();
+              const label = labelMap[prefix];
+              if (label) {
+                await github.rest.issues.addLabels({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: context.payload.pull_request.number,
+                  labels: [label],
+                });
+              }
+            }

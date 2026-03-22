@@ -1,0 +1,37 @@
+changelog:
+  exclude:
+    labels:
+      - skip-changelog
+    authors:
+      - dependabot
+      - renovate
+  categories:
+    - title: "New Features"
+      labels:
+        - feat
+        - feature
+        - enhancement
+    - title: "Bug Fixes"
+      labels:
+        - fix
+        - bugfix
+        - bug
+    - title: "Security"
+      labels:
+        - security
+    - title: "Performance"
+      labels:
+        - perf
+        - performance
+    - title: "Documentation"
+      labels:
+        - docs
+        - documentation
+    - title: "Infrastructure"
+      labels:
+        - ci
+        - infra
+        - chore
+    - title: "Refactoring"
+      labels:
+        - refactor

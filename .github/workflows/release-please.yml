@@ -12,6 +12,10 @@ permissions:
 jobs:
   release-please:
     runs-on: ubuntu-latest
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+      version: ${{ steps.release.outputs.version }}
     steps:
       - uses: googleapis/release-please-action@v4
         id: release
@@ -24,5 +28,63 @@ jobs:
       - name: Auto-merge release PR
         if: steps.release.outputs.pr
         run: gh pr merge ${{ fromJSON(steps.release.outputs.pr).number }} --squash --auto
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # After a release is created, generate detailed notes and sync to docs
+  publish-notes:
+    needs: release-please
+    if: needs.release-please.outputs.release_created == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: master
+          fetch-depth: 0
+
+      - name: Generate detailed release notes
+        run: |
+          VERSION="${{ needs.release-please.outputs.version }}"
+          TAG="${{ needs.release-please.outputs.tag_name }}"
+
+          # Find the previous tag
+          PREV_TAG=$(git tag --sort=-v:refname | grep -v "$TAG" | head -1)
+
+          # Generate categorized notes from PRs merged since last release
+          NOTES=$(gh api repos/${{ github.repository }}/releases/generate-notes \
+            -f tag_name="$TAG" \
+            -f previous_tag_name="$PREV_TAG" \
+            -f target_commitish=master \
+            --jq '.body')
+
+          # Update the GitHub Release with detailed notes
+          gh release edit "$TAG" --notes "$NOTES"
+
+          echo "RELEASE_NOTES<<NOTESEOF" >> $GITHUB_ENV
+          echo "$NOTES" >> $GITHUB_ENV
+          echo "NOTESEOF" >> $GITHUB_ENV
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: pnpm/action-setup@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: ".nvmrc"
+          cache: "pnpm"
+
+      - name: Sync changelog to docs site
+        run: |
+          node scripts/sync-changelog.mjs
+        env:
+          VERSION: ${{ env.VERSION }}
+
+      - name: Commit docs changelog update
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apps/web/content/docs/changelog.mdx
+          git diff --cached --quiet || git commit -m "docs: sync changelog for v${{ env.VERSION }}"
+          git push
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

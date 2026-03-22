@@ -3,12 +3,17 @@
   "changelog-type": "default",
   "include-component-in-tag": true,
   "include-v-in-tag": true,
+  "pull-request-title-pattern": "chore: release v${version}",
   "changelog-sections": [
-    { "type": "feat", "section": "Features" },
-    { "type": "fix", "section": "Bug Fixes" },
-    { "type": "perf", "section": "Performance Improvements" },
-    { "type": "refactor", "section": "Code Refactoring" },
-    { "type": "docs", "section": "Documentation" }
+    { "type": "feat", "section": "New Features", "hidden": false },
+    { "type": "fix", "section": "Bug Fixes", "hidden": false },
+    { "type": "perf", "section": "Performance", "hidden": false },
+    { "type": "security", "section": "Security", "hidden": false },
+    { "type": "refactor", "section": "Improvements", "hidden": false },
+    { "type": "docs", "section": "Documentation", "hidden": false },
+    { "type": "ci", "section": "Infrastructure", "hidden": false },
+    { "type": "test", "section": "Testing", "hidden": false },
+    { "type": "chore", "section": "Maintenance", "hidden": true }
   ],
   "packages": {
     ".": {
